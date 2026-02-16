@@ -3,7 +3,6 @@
  * @author Hedi Basly
  * @brief Entry point for EdgeSense Application
  * @date 2026-02-16
- * @last_modified 2026-02-16
  */
 #include <iostream>
 #include <EdgeSense/Logger/Logger.h>
