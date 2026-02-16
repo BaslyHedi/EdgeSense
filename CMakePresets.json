@@ -1,0 +1,21 @@
+{
+  "version": 3,
+  "configurePresets": [
+    {
+      "name": "rpi5",
+      "displayName": "Raspberry Pi 5 (Cross-Compile)",
+      "description": "Using aarch64-linux-gnu toolchain",
+      "binaryDir": "${sourceDir}/build/rpi5",
+      "toolchainFile": "${sourceDir}/CMake/Rpi5-toolchain.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "host",
+      "displayName": "Ubuntu Host (Local)",
+      "description": "Build for local x86_64 testing",
+      "binaryDir": "${sourceDir}/build/host"
+    }
+  ]
+}
