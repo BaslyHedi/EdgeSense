@@ -39,3 +39,16 @@
 
 # debug information files
 *.dwo
+
+# Build artifacts
+build/
+bin/
+obj/
+
+# IDEs
+.vscode/
+.cmake/
+
+# System files
+.DS_Store
+*.swp

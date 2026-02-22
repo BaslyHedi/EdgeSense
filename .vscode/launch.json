@@ -1,0 +1,27 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Deploy & Debug on RPi 5",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "/home/hedi/EdgeSenseApp",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "/home/hedi",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb-multiarch",
+            "miDebuggerServerAddress": "Hedi-RPi5.local:2345",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ],
+            "preLaunchTask": "Deploy to HediPi"
+        }
+    ]
+}
