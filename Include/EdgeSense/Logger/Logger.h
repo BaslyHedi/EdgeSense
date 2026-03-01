@@ -13,6 +13,7 @@
 #include <condition_variable>
 #include <atomic>
 #include <sstream>
+#include <fstream>
 
 namespace EdgeSense {
 namespace Logger {
@@ -56,6 +57,7 @@ private:
     ~Logger(); // Private destructor
 
     void processLogs(); // Worker thread function
+    void rotateLog();   // Log rotation based on file size
     std::string levelToString(LogLevel level);
 
     // Threading members
@@ -64,9 +66,14 @@ private:
     std::condition_variable condVar;
     std::thread workerThread;
     std::atomic<bool> running;
+    
+    // Log file management
+    std::ofstream logFile;
+    const std::string logPath = "/var/log/EdgeSenseApp.log";
+    const uintmax_t maxSize = 5 * 1024 * 1024; // 5MB Limit
 };
 
-// Senior "Quality of Life" Shortcut: Macros
+// Shortcut: Macros
 // These allow you to write LOG_INFO("Hello") instead of the full singleton call.
 #define LOG_INFO(msg) EdgeSense::Logger::Logger::getInstance().log(EdgeSense::Logger::LogLevel::INFO, msg)
 #define LOG_WARN(msg) EdgeSense::Logger::Logger::getInstance().log(EdgeSense::Logger::LogLevel::WARNING, msg)
