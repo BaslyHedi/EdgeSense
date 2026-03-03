@@ -6,10 +6,10 @@
  */
 #include <EdgeSense/Sensors/EnvSensor.h>
 
-namespace edgesense {
+namespace EdgeSense {
 namespace Sensors {
 
 // Implementation goes here
 
 } // namespace Sensors
-} // namespace edgesense
+} // namespace EdgeSense

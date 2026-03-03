@@ -6,10 +6,10 @@
  */
 #include <EdgeSense/Core/Scheduler.h>
 
-namespace edgesense {
+namespace EdgeSense {
 namespace Core {
 
 // Implementation goes here
 
 } // namespace Core
-} // namespace edgesense
+} // namespace EdgeSense

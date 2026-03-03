@@ -6,7 +6,7 @@
  */
 #pragma once
 
-namespace edgesense {
+namespace EdgeSense {
 namespace IPC {
 
 class SocketServer {
@@ -16,4 +16,4 @@ public:
 };
 
 } // namespace IPC
-} // namespace edgesense
+} // namespace EdgeSense
