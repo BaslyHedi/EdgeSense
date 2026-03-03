@@ -6,10 +6,10 @@
  */
 #include <EdgeSense/Utils/Utils.h>
 
-namespace edgesense {
+namespace EdgeSense {
 namespace Utils {
 
 // Implementation goes here
 
 } // namespace Utils
-} // namespace edgesense
+} // namespace EdgeSense

@@ -6,10 +6,10 @@
  */
 #include <EdgeSense/Sensors/ImuSensor.h>
 
-namespace edgesense {
+namespace EdgeSense {
 namespace Sensors {
 
 // Implementation goes here
 
 } // namespace Sensors
-} // namespace edgesense
+} // namespace EdgeSense

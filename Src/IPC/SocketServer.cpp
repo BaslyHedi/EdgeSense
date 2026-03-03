@@ -6,10 +6,10 @@
  */
 #include <EdgeSense/IPC/SocketServer.h>
 
-namespace edgesense {
+namespace EdgeSense {
 namespace IPC {
 
 // Implementation goes here
 
 } // namespace IPC
-} // namespace edgesense
+} // namespace EdgeSense

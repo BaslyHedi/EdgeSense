@@ -6,7 +6,7 @@
  */
 #pragma once
 
-namespace edgesense {
+namespace EdgeSense {
 namespace Sensors {
 
 class ImuSensor {
@@ -16,4 +16,4 @@ public:
 };
 
 } // namespace Sensors
-} // namespace edgesense
+} // namespace EdgeSense

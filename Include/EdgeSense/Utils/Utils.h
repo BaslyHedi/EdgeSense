@@ -6,7 +6,7 @@
  */
 #pragma once
 
-namespace edgesense {
+namespace EdgeSense {
 namespace Utils {
 
 class Utils {
@@ -16,4 +16,4 @@ public:
 };
 
 } // namespace Utils
-} // namespace edgesense
+} // namespace EdgeSense

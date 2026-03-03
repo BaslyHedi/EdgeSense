@@ -21,7 +21,7 @@ set(PROJECT_SOURCES
     Src/main.cpp
     Src/Core/Scheduler.cpp
     Src/Core/SensorManager.cpp
-    Src/Hal/LinuxI2c.cpp
+    Src/HAL/I2cMaster.cpp
     Src/IPC/SocketServer.cpp
     Src/Logger/Logger.cpp
     Src/Sensors/ImuSensor.cpp
