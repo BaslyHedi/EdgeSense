@@ -18,14 +18,22 @@ set(BINARY_NAME EdgeSenseApp)
 # 4. Collect Source Files
 # We list them explicitly to maintain control over the build graph
 set(PROJECT_SOURCES
+    # Main Application Entry Point
     Src/main.cpp
+    # Core Modules
     Src/Core/Scheduler.cpp
     Src/Core/SensorManager.cpp
+    #  HAL Modules
     Src/HAL/I2cMaster.cpp
+    # IPC Socket Server
     Src/IPC/SocketServer.cpp
+    # Logger
     Src/Logger/Logger.cpp
-    Src/Sensors/ImuSensor.cpp
-    Src/Sensors/EnvSensor.cpp
+    # Sensor Implementations
+    Src/Sensors/Sensors.cpp
+    Src/Sensors/LSM9DS1_ImuSens.cpp
+    Src/Sensors/LPS25HB_EnvSens.cpp
+    # Utility Functions
     Src/Utils/Utils.cpp
 )
 
