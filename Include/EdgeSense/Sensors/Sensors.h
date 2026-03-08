@@ -13,14 +13,6 @@
 
 namespace EdgeSense {
     namespace Sensors {
-
-        // Simple structure for 3D data (IMU)
-        struct Vector3 {
-            float x = 0.0f;
-            float y = 0.0f;
-            float z = 0.0f;
-        };
-
         /**
          * @brief Top-level Base Class for all sensors (abstract)
           * This class defines the common interface and properties for all sensor types. 
@@ -63,12 +55,19 @@ namespace EdgeSense {
         /**
          * @brief Middle-layer for Motion Data
          */
+        // Simple structure for 3D data (IMU)
+        struct Vector3 {
+            float x = 0.0f;
+            float y = 0.0f;
+            float z = 0.0f;
+        };
+
         class ImuSensor : public Sensor {
         public:
             using Sensor::Sensor;
 
-            virtual Vector3 getAcceleration() const = 0;
-            virtual Vector3 getGyroscope() const = 0;
+            virtual Vector3 getAcceleration() const { return {0,0,0}; }
+            virtual Vector3 getGyroscope() const { return {0,0,0}; }
             virtual Vector3 getMagnetometer() const { return {0,0,0}; }
         };
 
