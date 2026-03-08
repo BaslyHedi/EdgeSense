@@ -9,6 +9,7 @@
 #include <EdgeSense/Logger/Logger.h>
 #include <EdgeSense/HAL/I2cMaster.h>
 #include <EdgeSense/Sensors/LPS25HB_EnvSens.h>
+#include <EdgeSense/Sensors/LSM9DS1_ImuSens.h>
 
 using namespace EdgeSense::HAL;
 using namespace EdgeSense::Logger;
@@ -31,11 +32,17 @@ int main()
     }
 
     /* Create Sensors objects */
-    std::unique_ptr <EnvSensor> PressureSensor = std::make_unique<LPS25HB>(i2c);
+    std::unique_ptr <EnvSensor> Pi_LPS25HB = std::make_unique<LPS25HB>(i2c);
+    std::unique_ptr <ImuSensor> Pi_LSM9DS1 = std::make_unique<LSM9DS1>(i2c);
 
-    /* Intialize the hardware */
-    if (!PressureSensor->initialize()) {
+    /* Intialize the LPS25HB */
+    if (!Pi_LPS25HB->initialize()) {
         LOG_ERROR("Failed to initialize LPS25HB!");
+        return -1;
+    }
+    /* Intialize the LSM9DS1 */
+    if (!Pi_LSM9DS1->initialize()) {
+        LOG_ERROR("Failed to initialize LSM9DS1!");
         return -1;
     }
     
@@ -43,17 +50,30 @@ int main()
     try {
         while (true) {
             /* Pull new data from the physical registers */
-            PressureSensor->update();
+            Pi_LPS25HB->update();
+            Pi_LSM9DS1->update();
 
-            /* Format the output nicely */
+            /* Format the Pressure and Temperature nicely */
             std::stringstream ss;
             ss << std::fixed << std::setprecision(2)
-               << " [ " << PressureSensor->getName() << " ] "
-               << " Pressure: " << PressureSensor->getPressure() << " hPa | "
-               << " Temp: " << PressureSensor->getTemperature() << " °C";
+               << " [ " << Pi_LPS25HB->getName() << " ] "
+               << " Pressure: " << Pi_LPS25HB->getPressure() << " hPa | "
+               << " Temp: " << Pi_LPS25HB->getTemperature() << " °C";
 
             std::cout << ss.str() << std::endl;
-            
+
+            /* Format the Acceleration and Gyroscope data nicely */
+            std::stringstream ss2;
+            ss2 << std::fixed << std::setprecision(2)
+                << " [ " << Pi_LSM9DS1->getName() << " ] "
+                << " Accel: (" << Pi_LSM9DS1->getAcceleration().x << ", "
+                << Pi_LSM9DS1->getAcceleration().y << ", "
+                << Pi_LSM9DS1->getAcceleration().z << ") g | "
+                << " Gyro: (" << Pi_LSM9DS1->getGyroscope().x << ", "
+                << Pi_LSM9DS1->getGyroscope().y << ", "
+                << Pi_LSM9DS1->getGyroscope().z << ") °/s";
+
+            std::cout << ss2.str() << std::endl;
 
             /* Wait 1 second before next reading */
             std::this_thread::sleep_for(std::chrono::milliseconds(1000));

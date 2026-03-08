@@ -47,7 +47,7 @@ namespace EdgeSense {
         public:
             using Sensor::Sensor; 
             
-            virtual float getTemperature() const = 0;
+            virtual float getTemperature() const { return 0.0f; }   // Default if not supported
             virtual float getPressure() const { return 0.0f; }   // Default if not supported
             virtual float getHumidity() const { return 0.0f; }   // Default if not supported
         };
@@ -66,9 +66,9 @@ namespace EdgeSense {
         public:
             using Sensor::Sensor;
 
-            virtual Vector3 getAcceleration() const { return {0,0,0}; }
-            virtual Vector3 getGyroscope() const { return {0,0,0}; }
-            virtual Vector3 getMagnetometer() const { return {0,0,0}; }
+            virtual Vector3 getAcceleration() const { return {0.0f,0.0f,0.0f}; }
+            virtual Vector3 getGyroscope() const { return {0.0f,0.0f,0.0f}; }
+            virtual Vector3 getMagnetometer() const { return {0.0f,0.0f,0.0f}; }
         };
 
     } // namespace Sensors
