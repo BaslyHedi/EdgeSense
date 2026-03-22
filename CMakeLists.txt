@@ -21,7 +21,7 @@ set(PROJECT_SOURCES
     # Main Application Entry Point
     Src/main.cpp
     # Core Modules
-    Src/Core/Scheduler.cpp
+    Src/Core/ThreadManager.cpp
     Src/Core/SensorManager.cpp
     #  HAL Modules
     Src/HAL/I2cMaster.cpp
@@ -30,7 +30,7 @@ set(PROJECT_SOURCES
     # Logger
     Src/Logger/Logger.cpp
     # Sensor Implementations
-    Src/Sensors/Sensors.cpp
+    Src/Sensors/SensorsRegistry.cpp
     Src/Sensors/LSM9DS1_ImuSens.cpp
     Src/Sensors/LPS25HB_EnvSens.cpp
     # Utility Functions

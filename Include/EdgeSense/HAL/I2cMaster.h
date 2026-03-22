@@ -9,6 +9,7 @@
 #include <string>
 #include <cstdint>
 #include <vector>
+#include <mutex>
 
 namespace EdgeSense {
     namespace HAL {
@@ -130,6 +131,9 @@ namespace EdgeSense {
             /* Currently selected slave device address (cached to avoid redundant ioctl calls) */
             uint8_t currentSlaveAddr;
 
+            /* Mutex for protecting I2C bus access */
+            std::mutex busMutex;
+
             /**
              * @brief Select the I2C slave device at the specified address
              * Uses the ioctl() system call with I2C_SLAVE flag to select the target slave device.
@@ -141,5 +145,5 @@ namespace EdgeSense {
             bool selectSlave(uint8_t slaveAddr);
         };
 
-    } // namespace HAL
-} // namespace EdgeSense
+    } /* namespace HAL */
+} /* namespace EdgeSense */
