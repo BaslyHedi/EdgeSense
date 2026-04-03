@@ -97,6 +97,9 @@ bool I2cMaster::selectSlave(uint8_t slaveAddr) {
  */
 bool I2cMaster::writeByte(uint8_t slaveAddr, uint8_t reg, uint8_t value) {
     bool success = false;
+
+    /* Lock the I2C bus for exclusive access */
+    std::lock_guard<std::mutex> lock(busMutex);
     
     if (selectSlave(slaveAddr)) {
         uint8_t buffer[2] = {reg, value};
@@ -141,10 +144,13 @@ bool I2cMaster::readByte(uint8_t slaveAddr, uint8_t reg, uint8_t& value) {
 bool I2cMaster::readBytes(uint8_t slaveAddr, uint8_t reg, uint8_t* data, size_t length) {
     bool success = false;
     
+    /* Lock the I2C bus for exclusive access */
+    std::lock_guard<std::mutex> lock(busMutex);
+
     if (selectSlave(slaveAddr)) {
-        // Step 1: Write the register address we want to read from
+        /* Step 1: Write the register address we want to read from */
         if (write(fileDescriptor, &reg, 1) == 1) {
-            // Step 2: Read the requested data bytes
+            /* Step 2: Read the requested data bytes */
             if (read(fileDescriptor, data, length) == static_cast<ssize_t>(length)) {
                 success = true;
             } else {
@@ -158,5 +164,5 @@ bool I2cMaster::readBytes(uint8_t slaveAddr, uint8_t reg, uint8_t* data, size_t 
     return success;
 }
 
-} // namespace HAL
-} // namespace EdgeSense
+} /* namespace HAL */
+} /* namespace EdgeSense */

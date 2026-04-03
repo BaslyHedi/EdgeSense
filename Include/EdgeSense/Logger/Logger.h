@@ -16,68 +16,68 @@
 #include <fstream>
 
 namespace EdgeSense {
-namespace Logger {
-
-/**
- * @brief Severity levels for log filtering
- */
-enum class LogLevel {
-    DEBUG,
-    INFO,
-    WARNING,
-    ERROR
-};
-
-/**
- * @brief Singleton Logger class
- * Handles log messages in a background thread to prevent I/O blocking.
- */
-class Logger {
-public:
-    // Delete copy constructor and assignment operator (Singleton rule)
-    Logger(const Logger&) = delete;
-    Logger& operator=(const Logger&) = delete;
-
-    static Logger& getInstance();
+    namespace Logger {
 
     /**
-     * @brief Adds a message to the logging queue
-     * @param level Severity of the log
-     * @param message Text to log
+     * @brief Severity levels for log filtering
      */
-    void log(LogLevel level, const std::string& message);
+    enum class LogLevel {
+        DEBUG,
+        INFO,
+        WARNING,
+        ERROR
+    };
 
     /**
-     * @brief Gracefully shuts down the background thread
+     * @brief Singleton Logger class
+     * Handles log messages in a background thread to prevent I/O blocking.
      */
-    void stop();
+    class Logger {
+    public:
+        // Delete copy constructor and assignment operator (Singleton rule)
+        Logger(const Logger&) = delete;
+        Logger& operator=(const Logger&) = delete;
 
-private:
-    Logger();  // Private constructor
-    ~Logger(); // Private destructor
+        static Logger& getInstance();
 
-    void processLogs(); // Worker thread function
-    void rotateLog();   // Log rotation based on file size
-    std::string levelToString(LogLevel level);
+        /**
+         * @brief Adds a message to the logging queue
+         * @param level Severity of the log
+         * @param message Text to log
+         */
+        void log(LogLevel level, const std::string& message);
 
-    // Threading members
-    std::queue<std::string> logQueue;
-    std::mutex queueMutex;
-    std::condition_variable condVar;
-    std::thread workerThread;
-    std::atomic<bool> running;
-    
-    // Log file management
-    std::ofstream logFile;
-    const std::string logPath = "/var/log/EdgeSenseApp.log";
-    const uintmax_t maxSize = 5 * 1024 * 1024; // 5MB Limit
-};
+        /**
+         * @brief Gracefully shuts down the background thread
+         */
+        void stop();
 
-// Shortcut: Macros
-// These allow you to write LOG_INFO("Hello") instead of the full singleton call.
-#define LOG_INFO(msg) EdgeSense::Logger::Logger::getInstance().log(EdgeSense::Logger::LogLevel::INFO, msg)
-#define LOG_WARN(msg) EdgeSense::Logger::Logger::getInstance().log(EdgeSense::Logger::LogLevel::WARNING, msg)
-#define LOG_ERROR(msg) EdgeSense::Logger::Logger::getInstance().log(EdgeSense::Logger::LogLevel::ERROR, msg)
+    private:
+        Logger();  // Private constructor
+        ~Logger(); // Private destructor
 
-} // namespace Logger
+        void processLogs(); // Worker thread function
+        void rotateLog();   // Log rotation based on file size
+        std::string levelToString(LogLevel level);
+
+        // Threading members
+        std::queue<std::string> logQueue;
+        std::mutex queueMutex;
+        std::condition_variable condVar;
+        std::thread workerThread;
+        std::atomic<bool> running;
+        
+        // Log file management
+        std::ofstream logFile;
+        const std::string logPath = "/var/log/EdgeSenseApp.log";
+        const uintmax_t maxSize = 5 * 1024 * 1024; // 5MB Limit
+    };
+
+    // Shortcut: Macros
+    // These allow you to write LOG_INFO("Hello") instead of the full singleton call.
+    #define LOG_INFO(msg) EdgeSense::Logger::Logger::getInstance().log(EdgeSense::Logger::LogLevel::INFO, msg)
+    #define LOG_WARN(msg) EdgeSense::Logger::Logger::getInstance().log(EdgeSense::Logger::LogLevel::WARNING, msg)
+    #define LOG_ERROR(msg) EdgeSense::Logger::Logger::getInstance().log(EdgeSense::Logger::LogLevel::ERROR, msg)
+
+    } // namespace Logger
 } // namespace EdgeSense

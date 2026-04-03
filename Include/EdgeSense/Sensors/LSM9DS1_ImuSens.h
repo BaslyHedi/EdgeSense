@@ -1,7 +1,7 @@
 /**
- * @file ImuSensor.h
+ * @file LSM9DS1_ImuSens.h
  * @author Hedi Basly
- * @brief Header for ImuSensor module
+ * @brief Header for LSM9DS1 ImuSensor module
  * @date 2026-02-16
  */
 #pragma once

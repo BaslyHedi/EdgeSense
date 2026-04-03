@@ -1,7 +1,7 @@
 /**
- * @file ImuSensors.cpp
+ * @file LSM9DS1_ImuSens.cpp
  * @author Hedi Basly
- * @brief Implementation of ImuSensors module
+ * @brief Implementation of LSM9DS1 ImuSensor module
  * @date 2026-02-16
  */
 
@@ -58,15 +58,15 @@ namespace EdgeSense {
         void LSM9DS1::update() {
             uint8_t buf[6];
 
-            // Read Accel (6 bytes starting at 0x28)
-            // We use the 0x80 bit for auto-incrementing the register address
+            /* Read Accel (6 bytes starting at 0x28) */
+            /* We use the 0x80 bit for auto-incrementing the register address */
             if (i2cBus.readBytes(address, 0x28 | 0x80, buf, 6)) {
                 accel.x = stitch(buf[0], buf[1]) * 0.000061f;
                 accel.y = stitch(buf[2], buf[3]) * 0.000061f;
                 accel.z = stitch(buf[4], buf[5]) * 0.000061f;
             }
 
-            // Read Gyro (6 bytes starting at 0x18)
+            /* Read Gyro (6 bytes starting at 0x18) */
             if (i2cBus.readBytes(address, 0x18 | 0x80, buf, 6)) {
                 gyro.x = stitch(buf[0], buf[1]) * 0.00875f;
                 gyro.y = stitch(buf[2], buf[3]) * 0.00875f;
@@ -81,5 +81,5 @@ namespace EdgeSense {
         Vector3 LSM9DS1::getAcceleration() const { return accel; }
         Vector3 LSM9DS1::getGyroscope() const { return gyro; }
         Vector3 LSM9DS1::getMagnetometer() const { return magneto; } 
-    } // namespace Sensors
-} // namespace EdgeSense
+    } /* namespace Sensors */
+} /* namespace EdgeSense */

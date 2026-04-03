@@ -10,15 +10,16 @@
 #include <EdgeSense/HAL/I2cMaster.h>
 #include <EdgeSense/Sensors/LPS25HB_EnvSens.h>
 #include <EdgeSense/Sensors/LSM9DS1_ImuSens.h>
+#include <EdgeSense/Sensors/SensorsRegistry.h>
+#include <EdgeSense/Core/ThreadManager.h>
 
 using namespace EdgeSense::HAL;
-using namespace EdgeSense::Logger;
 using namespace EdgeSense::Sensors;
+using namespace EdgeSense::Core;
 
-int main() 
-{
-    /* Start the logger */
-    auto& logger = Logger::Logger::getInstance();
+int main() {
+    EdgeSense::Core::ThreadManager manager;
+    
     LOG_INFO("🚀 EdgeSense starting on Hedi-RPi5!");
     LOG_WARN("Log file will be stored at /var/log/EdgeSenseApp.log");
 
@@ -31,59 +32,109 @@ int main()
         return -1;
     }
 
-    /* Create Sensors objects */
+    /* Create Sensor Instances */
     std::unique_ptr <EnvSensor> Pi_LPS25HB = std::make_unique<LPS25HB>(i2c);
     std::unique_ptr <ImuSensor> Pi_LSM9DS1 = std::make_unique<LSM9DS1>(i2c);
-
+    
     /* Intialize the LPS25HB */
     if (!Pi_LPS25HB->initialize()) {
         LOG_ERROR("Failed to initialize LPS25HB!");
-        return -1;
     }
     /* Intialize the LSM9DS1 */
     if (!Pi_LSM9DS1->initialize()) {
         LOG_ERROR("Failed to initialize LSM9DS1!");
-        return -1;
     }
-    
-    /* Main Telemetry Loop */
-    try {
-        while (true) {
-            /* Pull new data from the physical registers */
-            Pi_LPS25HB->update();
-            Pi_LSM9DS1->update();
 
-            /* Format the Pressure and Temperature nicely */
-            std::stringstream ss;
-            ss << std::fixed << std::setprecision(2)
-               << " [ " << Pi_LPS25HB->getName() << " ] "
-               << " Pressure: " << Pi_LPS25HB->getPressure() << " hPa | "
-               << " Temp: " << Pi_LPS25HB->getTemperature() << " °C";
+    /* --- 1. Harvester Task (1ms) --- */
+    manager.setHarvesterTask([&]() {
+        /* Capture the raw data from the I2C sensors */
+        Pi_LPS25HB->update(); 
+        Pi_LSM9DS1->update();
 
-            std::cout << ss.str() << std::endl;
+        /* Push the raw Vector3/float data into the Registry's Circular Buffers */
+        auto& registry = EdgeSense::Sensors::SensorRegistry::getInstance();
+        
+        registry.getAccelRawBuffer().push(Pi_LSM9DS1->getAcceleration());
+        registry.getGyroRawBuffer().push(Pi_LSM9DS1->getGyroscope());
+        registry.getMagRawBuffer().push(Pi_LSM9DS1->getMagnetometer());
+        
+        registry.getPressure().push(Pi_LPS25HB->getPressure());
+        registry.getTemperature().push(Pi_LPS25HB->getTemperature());
+    });
 
-            /* Format the Acceleration and Gyroscope data nicely */
-            std::stringstream ss2;
-            ss2 << std::fixed << std::setprecision(2)
-                << " [ " << Pi_LSM9DS1->getName() << " ] "
-                << " Accel: (" << Pi_LSM9DS1->getAcceleration().x << ", "
-                << Pi_LSM9DS1->getAcceleration().y << ", "
-                << Pi_LSM9DS1->getAcceleration().z << ") g | "
-                << " Gyro: (" << Pi_LSM9DS1->getGyroscope().x << ", "
-                << Pi_LSM9DS1->getGyroscope().y << ", "
-                << Pi_LSM9DS1->getGyroscope().z << ") °/s";
+    /* --- 2. Refiner Task (5ms) --- */
+    manager.setRefinerTask([&]() {
+        auto& registry = EdgeSense::Sensors::SensorRegistry::getInstance();
+        
+        /* Function to average a window of Vector3 samples */
+        auto getAverage = [](const std::vector<EdgeSense::Sensors::Vector3>& samples) {
+            EdgeSense::Sensors::Vector3 avg{0, 0, 0};
+            if (samples.empty()) return avg;
+            for (const auto& s : samples) {
+                avg.x += s.x; avg.y += s.y; avg.z += s.z;
+            }
+            float n = static_cast<float>(samples.size());
+            return EdgeSense::Sensors::Vector3{avg.x/n, avg.y/n, avg.z/n};
+        };
 
-            std::cout << ss2.str() << std::endl;
+        /* Process IMU data */
+        auto aAvg = getAverage(registry.getAccelRawBuffer().getLatest(5));
+        auto gAvg = getAverage(registry.getGyroRawBuffer().getLatest(5));
+        auto mAvg = getAverage(registry.getMagRawBuffer().getLatest(5));
 
-            /* Wait 1 second before next reading */
-            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+        /* Update the Registry's thread-safe "Snapshots" */
+        registry.updateFilteredImuAccel(aAvg.x, aAvg.y, aAvg.z);
+        registry.updateFilteredImuGyro(gAvg.x, gAvg.y, gAvg.z);
+        registry.updateFilteredImuMag(mAvg.x, mAvg.y, mAvg.z);
+
+        /* Process Environmental (take latest 1) */
+        auto pLatest = registry.getPressure().getLatest(1);
+        auto tLatest = registry.getTemperature().getLatest(1);
+        if (!pLatest.empty() && !tLatest.empty()) {
+            registry.updateFilteredEnv(pLatest[0], tLatest[0]);
         }
-    } catch (...) {
-        LOG_WARN("Loop interrupted.");
-    }
+    });
+
+    /* --- 3. Navigator Task (10ms) --- */
+    int printDivisor = 0;
+    manager.setNavigatorTask([&]() {
+        auto& registry = EdgeSense::Sensors::SensorRegistry::getInstance();
+        
+        float ax, ay, az, gx, gy, gz, mx, my, mz, press, temp;
+        
+        /* Pull the clean snapshots */
+        registry.getFilteredImuAccel(ax, ay, az);
+        registry.getFilteredImuGyro(gx, gy, gz);
+        registry.getFilteredImuMag(mx, my, mz);
+        registry.getFilteredEnv(press, temp);
+
+        /* Print to console at 10Hz (every 100ms) to avoid CPU bloat */
+        if (++printDivisor >= 10) {
+            std::cout << std::fixed << std::setprecision(2);
+        
+            /* Dashboard Layout: 
+           [IMU] = Motion 
+           [MAG] = Heading 
+           [ENV] = Atmosphere 
+           [JIT] = OS Health 
+        */
+        std::cout << "\r[IMU] A(" << ax << "," << ay << ") G(" << gx << "," << gy << ") "
+                  << "[MAG] M(" << mx << "," << my << "," << mz << ") " /* Now Included */
+                  << "[ENV] P:" << press << " T:" << temp << "C "
+                  << "| Jitter(H/R/N): " 
+                  << (manager.getMaxJitter(EdgeSense::Core::Tier::Harvester) / 1000) << "/"
+                  << (manager.getMaxJitter(EdgeSense::Core::Tier::Refiner) / 1000) << "/"
+                  << (manager.getMaxJitter(EdgeSense::Core::Tier::Navigator) / 1000) << " us"
+                  << std::flush;
+            
+            printDivisor = 0;
+        }
+    });
+
+    manager.start();
     
-    /* Close I2C bus and Flush logger */
-    i2c.closeBus();
-    logger.stop();
+    /* Keep main alive */
+    while(true) { std::this_thread::sleep_for(std::chrono::seconds(1)); }
+    
     return 0;
 }
