@@ -1,6 +1,6 @@
 # EdgeSense: Real-Time Multi-Rate Sensor Framework
 **Project:** RPi5 High-Precision Telemetry & Jitter Analysis  
-**Architecture Version:** 1.0  
+**Architecture Version:** 2.0  
 **Target Platform:** Raspberry Pi 5 (BCM2712)
 
 ---
@@ -13,19 +13,25 @@ EdgeSense is a high-performance C++ framework designed to decouple hardware data
 ### 2.1 Threading Strategy (The 1-5-10 Rule)
 The application is divided into three primary execution domains to balance hardware constraints with processing requirements:
 
-| Thread | Frequency | Priority | Responsibility |
-| :--- | :--- | :--- | :--- |
-| **Harvester** | 1ms (1kHz) | `SCHED_FIFO` (99) | Raw I2C reads, Jitter measurement, Circular Buffer push. |
-| **Refiner** | 5ms (200Hz) | `SCHED_FIFO` (80) | Digital Signal Processing (DSP), Low-Pass Filtering, Decimation. |
-| **Navigator**| 10ms (100Hz) | `SCHED_OTHER` (0) | Sensor Fusion (AHRS), Orientation (Pitch/Roll), Logging/GUI. |
+| Thread | Frequency | Priority | Scheduler | Responsibility |
+| :--- | :--- | :--- | :--- | :--- |
+| **Harvester** | 1ms (1kHz) | 95 | `SCHED_FIFO` | Raw I2C reads, Jitter measurement, Circular Buffer push. |
+| **Refiner** | 5ms (200Hz) | 80 | `SCHED_FIFO` | Digital Signal Processing (DSP), Low-Pass Filtering, Decimation. |
+| **Navigator**| 10ms (100Hz) | 0 | `SCHED_FIFO` | Sensor Fusion (AHRS), Orientation (Pitch/Roll), Logging/GUI. |
 
+### 2.2 Real-Time Scheduling Mechanism
+Each wrapper thread (`harvesterWrapper`, `refinerWrapper`, `navigatorWrapper`) implements **absolute time scheduling** using:
+- **`clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, ...)`** for deterministic period enforcement
+- **Drift Prevention:** After each execution, `next_time` is re-anchored to the actual wake time to prevent scheduled time from drifting across iterations
+- **Jitter Measurement:** Calculated as `(actual_wake_time - scheduled_time)` in nanoseconds, tracking maximum observed jitter (`maxJitterNs`)
 
+This approach ensures periodic execution with minimal accumulated error, critical for the 1ms harvester deadline.
 
-### 2.2 Data Flow & Synchronization
+### 2.3 Data Flow & Synchronization
 To maintain thread safety without excessive blocking, the system employs:
-* **Circular Buffers:** Lock-free or Mutex-protected ring buffers for moving `int16_t` raw data from the Harvester to the Refiner.
-* **Atomic Snapshots:** `std::atomic` structures for sharing final filtered floats (Temperature, Pressure) with the UI/Logic layers.
-* **Bus Protection:** A singleton `I2cMaster` utilizing a `std::mutex` to prevent collision during concurrent device access.
+* **Circular Buffers:** Mutex-protected ring buffers for moving `Vector3` (IMU) and `float` (environmental) raw data from the Harvester to the Refiner.
+* **Thread-Safe Snapshots:** Atomic structures for sharing final filtered floats (acceleration, gyroscope, magnetometer, temperature, pressure) with consumer threads.
+* **Bus Protection:** A singleton `I2cMaster` utilizing a `std::mutex` to prevent collision during concurrent I2C device access.
 
 ---
 
@@ -53,16 +59,14 @@ The project aims to quantify the impact of kernel tuning on the 1ms "Harvester" 
 ## 4. Class Design (POO)
 
 ### Core Components
-1. **`I2cMaster`**: Shared hardware abstraction.
-2. **`Sensor` (Base)**: Abstract interface for all hardware.
-3. **`SensorRegistry`**: Singleton acting as the central data bridge and thread owner.
-4. **`JitterLogger`**: Instrumenting the 1ms loop using `CLOCK_MONOTONIC` to record timing deltas in nanoseconds.
-
-
+1. **`ThreadManager`**: Owns and manages three periodic threads (Harvester, Refiner, Navigator) with real-time scheduling and built-in jitter tracking.
+2. **`I2cMaster`**: Shared hardware abstraction layer with mutex-protected bus access.
+3. **`Sensor` (Base)**: Abstract interface for hardware sensors (IMU, Environmental).
+4. **`SensorRegistry`**: Singleton providing thread-safe data bridge with circular buffers and atomic snapshots for inter-thread communication.
 
 ---
 
 ## 5. Success Metrics
-* **Latency:** Time elapsed from I2C DRDY to Buffer Push.
-* **Jitter ($J$):** The variation in the 1ms period ($T_{actual} - 1ms$).
-* **Data Integrity:** Zero dropped samples during the "Refiner" decimation process.
+* **Latency:** Time elapsed from I2C read to Circular Buffer push.
+* **Jitter ($J$):** The variation in the periodic sleep interval (maximum observed deviation from scheduled period).
+* **Data Integrity:** Zero dropped samples and monotonic timestamp ordering across all tiers.

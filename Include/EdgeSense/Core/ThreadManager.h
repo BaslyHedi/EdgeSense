@@ -8,44 +8,55 @@
 #pragma once
 #include <thread>
 #include <atomic>
-#include <vector>
+#include <functional>
 #include <pthread.h>
-#include <ctime>
-#include <numeric>
-#include <EdgeSense/Sensors/SensorsRegistry.h>
-#include <EdgeSense/HAL/I2cMaster.h>
-#include <EdgeSense/Logger/Logger.h>
-#include <EdgeSense/Sensors/LPS25HB_EnvSens.h>
-#include <EdgeSense/Sensors/LSM9DS1_ImuSens.h>
+
 
 namespace EdgeSense {
     namespace Core {
 
+    enum class Tier { Harvester, Refiner, Navigator };
+
     class ThreadManager {
         public:
-            ThreadManager(HAL::I2cMaster& i2c);
+        /* Define the function signatures for our three tiers */
+            using TaskFunc = std::function<void()>;
+            ThreadManager();
             ~ThreadManager();
 
             void start();
             void stop();
 
-            /* Telemetry for Jitter Analysis */
-            long long getHarvesterMaxJitter() const { return harvesterMaxJitterNs.load(); }
-            long long getRefinerMaxJitter() const { return refinerMaxJitterNs.load(); }
-            long long getNavigatorMaxJitter() const { return navigatorMaxJitterNs.load(); }
+            /* Setters for the tasks */
+            void setHarvesterTask(TaskFunc task) { harvesterTask = task; }
+            void setRefinerTask(TaskFunc task) { refinerTask = task; }
+            void setNavigatorTask(TaskFunc task) { navigatorTask = task; }
+
+            /* Jitter Telemetry */
+            long long getMaxJitter(Tier tier) const {
+                switch (tier) {
+                    case Tier::Harvester: return harvesterMaxJitterNs.load();
+                    case Tier::Refiner:   return refinerMaxJitterNs.load();
+                    case Tier::Navigator: return navigatorMaxJitterNs.load();
+                    default: return 0;
+                }
+            }
 
         private:
-            void harvesterLoop(); /* 1ms - Raw Data Producer */
-            void refinerLoop();   /* 5ms - DSP / Filtering */
-            void navigatorLoop(); /* 10ms - Orientation / UI Updates */
+            void harvesterWrapper(); /* Handles timing + Jitter + calls injected task */
+            void refinerWrapper();   /* Handles 5ms timing + calls injected task */
+            void navigatorWrapper(); /* Handles 10ms timing + calls injected task */
 
-            HAL::I2cMaster& i2cBus;
             std::atomic<bool> running{false};
             
             std::thread harvesterThread;
             std::thread refinerThread;
             std::thread navigatorThread;
-            
+
+            TaskFunc harvesterTask;
+            TaskFunc refinerTask;
+            TaskFunc navigatorTask;
+
             std::atomic<long long> harvesterMaxJitterNs{0};
             std::atomic<long long> refinerMaxJitterNs{0};
             std::atomic<long long> navigatorMaxJitterNs{0};

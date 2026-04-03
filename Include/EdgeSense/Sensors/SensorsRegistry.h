@@ -23,7 +23,7 @@ namespace EdgeSense {
             }
 
             // --- Raw Data Buffers (For 1ms -> 5ms Pipeline) ---
-            Utils::CircularBuffer<Vector3, 200>& getAccelRawBuffer()    { return accelRawBuffer; }
+            Utils::CircularBuffer<Vector3, 50>& getAccelRawBuffer()    { return accelRawBuffer; }
             Utils::CircularBuffer<Vector3, 50>& getGyroRawBuffer()      { return gyroRawBuffer; }
             Utils::CircularBuffer<Vector3, 50>& getMagRawBuffer()       { return magnetoRawBuffer; }
             
