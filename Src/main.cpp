@@ -9,7 +9,8 @@
 #include <EdgeSense/Logger/Logger.h>
 #include <EdgeSense/HAL/I2cMaster.h>
 #include <EdgeSense/Sensors/LPS25HB_EnvSens.h>
-#include <EdgeSense/Sensors/LSM9DS1_ImuSens.h>
+#include <EdgeSense/Sensors/LSM9DS1_ImuSensMag.h>
+#include <EdgeSense/Sensors/LSM9DS1_ImuSensAccGyro.h>
 #include <EdgeSense/Sensors/SensorsRegistry.h>
 #include <EdgeSense/Core/ThreadManager.h>
 
@@ -34,29 +35,34 @@ int main() {
 
     /* Create Sensor Instances */
     std::unique_ptr <EnvSensor> Pi_LPS25HB = std::make_unique<LPS25HB>(i2c);
-    std::unique_ptr <ImuSensor> Pi_LSM9DS1 = std::make_unique<LSM9DS1>(i2c);
+    std::unique_ptr <ImuSensor> Pi_LSM9DS1AG = std::make_unique<LSM9DS1_AccGyro>(i2c);
+    std::unique_ptr <ImuSensor> Pi_LSM9DS1Mag = std::make_unique<LSM9DS1_Mag>(i2c);
     
     /* Intialize the LPS25HB */
     if (!Pi_LPS25HB->initialize()) {
         LOG_ERROR("Failed to initialize LPS25HB!");
     }
     /* Intialize the LSM9DS1 */
-    if (!Pi_LSM9DS1->initialize()) {
-        LOG_ERROR("Failed to initialize LSM9DS1!");
+    if (!Pi_LSM9DS1AG->initialize()) {
+        LOG_ERROR("Failed to initialize LSM9DS1 Accelerometer/Gyroscope!");
     }
-
+    if (!Pi_LSM9DS1Mag->initialize()) {
+        LOG_ERROR("Failed to initialize LSM9DS1 Magnetometer!");
+    }
+    
     /* --- 1. Harvester Task (1ms) --- */
     manager.setHarvesterTask([&]() {
         /* Capture the raw data from the I2C sensors */
         Pi_LPS25HB->update(); 
-        Pi_LSM9DS1->update();
+        Pi_LSM9DS1AG->update();
+        Pi_LSM9DS1Mag->update();
 
         /* Push the raw Vector3/float data into the Registry's Circular Buffers */
         auto& registry = EdgeSense::Sensors::SensorRegistry::getInstance();
         
-        registry.getAccelRawBuffer().push(Pi_LSM9DS1->getAcceleration());
-        registry.getGyroRawBuffer().push(Pi_LSM9DS1->getGyroscope());
-        registry.getMagRawBuffer().push(Pi_LSM9DS1->getMagnetometer());
+        registry.getAccelRawBuffer().push(Pi_LSM9DS1AG->getAcceleration());
+        registry.getGyroRawBuffer().push(Pi_LSM9DS1AG->getGyroscope());
+        registry.getMagRawBuffer().push(Pi_LSM9DS1Mag->getMagnetometer());
         
         registry.getPressure().push(Pi_LPS25HB->getPressure());
         registry.getTemperature().push(Pi_LPS25HB->getTemperature());

@@ -1,7 +1,7 @@
 /**
- * @file LSM9DS1_ImuSens.h
+ * @file LSM9DS1_ImuSensMag.h
  * @author Hedi Basly
- * @brief Header for LSM9DS1 ImuSensor module
+ * @brief Header for LSM9DS1 ImuSensor module for Magnetometer
  * @date 2026-02-16
  */
 #pragma once
@@ -11,19 +11,15 @@
 namespace EdgeSense {
     namespace Sensors {
 
-        class LSM9DS1 : public ImuSensor {
+        class LSM9DS1_Mag : public ImuSensor {
         public:
-            LSM9DS1 (HAL::I2cMaster& bus);
+            LSM9DS1_Mag(HAL::I2cMaster& bus);
             
             bool initialize() override;
             void update() override;
-            Vector3 getAcceleration() const override;
-            Vector3 getGyroscope() const override;
             Vector3 getMagnetometer() const override;
 
         private:
-            Vector3 accel;
-            Vector3 gyro;
             Vector3 magneto;
 
             // Helper to combine high/low bytes into a signed 16-bit integer
