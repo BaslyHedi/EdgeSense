@@ -11,7 +11,7 @@
 namespace EdgeSense {
     namespace Sensors {
 
-        class LSM9DS1_Mag : public ImuSensor {
+        class LSM9DS1_Mag : public ImuSensors {
         public:
             LSM9DS1_Mag(HAL::I2cMaster& bus);
             

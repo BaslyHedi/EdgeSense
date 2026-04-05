@@ -34,9 +34,9 @@ int main() {
     }
 
     /* Create Sensor Instances */
-    std::unique_ptr <EnvSensor> Pi_LPS25HB = std::make_unique<LPS25HB>(i2c);
-    std::unique_ptr <ImuSensor> Pi_LSM9DS1AG = std::make_unique<LSM9DS1_AccGyro>(i2c);
-    std::unique_ptr <ImuSensor> Pi_LSM9DS1Mag = std::make_unique<LSM9DS1_Mag>(i2c);
+    std::unique_ptr <EnvSensors> Pi_LPS25HB = std::make_unique<LPS25HB>(i2c);
+    std::unique_ptr <ImuSensors> Pi_LSM9DS1AG = std::make_unique<LSM9DS1_AccGyro>(i2c);
+    std::unique_ptr <ImuSensors> Pi_LSM9DS1Mag = std::make_unique<LSM9DS1_Mag>(i2c);
     
     /* Intialize the LPS25HB */
     if (!Pi_LPS25HB->initialize()) {

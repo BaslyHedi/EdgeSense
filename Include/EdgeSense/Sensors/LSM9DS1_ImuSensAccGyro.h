@@ -11,7 +11,7 @@
 namespace EdgeSense {
     namespace Sensors {
 
-        class LSM9DS1_AccGyro : public ImuSensor {
+        class LSM9DS1_AccGyro : public ImuSensors {
         public:
             LSM9DS1_AccGyro(HAL::I2cMaster& bus);
             
