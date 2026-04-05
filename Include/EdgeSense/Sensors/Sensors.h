@@ -43,7 +43,7 @@ namespace EdgeSense {
         /**
          * @brief Middle-layer for Environmental Data
          */
-        class EnvSensor : public Sensor {
+        class EnvSensors : public Sensor {
         public:
             using Sensor::Sensor; 
             
@@ -62,7 +62,7 @@ namespace EdgeSense {
             float z = 0.0f;
         };
 
-        class ImuSensor : public Sensor {
+        class ImuSensors : public Sensor {
         public:
             using Sensor::Sensor;
 

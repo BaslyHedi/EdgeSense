@@ -11,7 +11,7 @@
 
 namespace EdgeSense {
     namespace Sensors {
-        class LPS25HB : public EnvSensor {
+        class LPS25HB : public EnvSensors {
         public:
             LPS25HB(HAL::I2cMaster& bus);
             

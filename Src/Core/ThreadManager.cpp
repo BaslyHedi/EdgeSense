@@ -43,7 +43,7 @@ namespace EdgeSense {
         clock_gettime(CLOCK_MONOTONIC, &next_time);
 
         while (running) {
-            next_time.tv_nsec += 1000000; /* 1ms */
+            next_time.tv_nsec += HARVESTER_CYCLETIME_MS * 1000000; /* 10ms */
             if (next_time.tv_nsec >= 1000000000) {
                 next_time.tv_nsec -= 1000000000;
                 next_time.tv_sec++;
@@ -71,7 +71,7 @@ namespace EdgeSense {
         clock_gettime(CLOCK_MONOTONIC, &next_time);
 
         while (running) {
-            next_time.tv_nsec += 5000000; /* 5ms */
+            next_time.tv_nsec += REFINER_CYCLETIME_MS * 1000000;; /* 50ms */
             if (next_time.tv_nsec >= 1000000000) {
                 next_time.tv_nsec -= 1000000000;
                 next_time.tv_sec++;
@@ -99,7 +99,7 @@ namespace EdgeSense {
         clock_gettime(CLOCK_MONOTONIC, &next_time);
 
         while (running) {
-            next_time.tv_nsec += 10000000; /* 10ms */
+            next_time.tv_nsec += NAVIGATOR_CYCLETIME_MS * 1000000;; /* 100ms */
             if (next_time.tv_nsec >= 1000000000) {
                 next_time.tv_nsec -= 1000000000;
                 next_time.tv_sec++;

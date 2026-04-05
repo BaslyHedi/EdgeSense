@@ -31,7 +31,8 @@ set(PROJECT_SOURCES
     Src/Logger/Logger.cpp
     # Sensor Implementations
     Src/Sensors/SensorsRegistry.cpp
-    Src/Sensors/LSM9DS1_ImuSens.cpp
+    Src/Sensors/LSM9DS1_ImuSensAccGyro.cpp
+    Src/Sensors/LSM9DS1_ImuSensMag.cpp
     Src/Sensors/LPS25HB_EnvSens.cpp
     # Utility Functions
     Src/Utils/Utils.cpp

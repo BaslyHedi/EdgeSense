@@ -17,6 +17,11 @@ namespace EdgeSense {
 
     enum class Tier { Harvester, Refiner, Navigator };
 
+    /* Using slow sampling rates instead of the desired ones (1/5/10) => (5/25/50) */
+    #define HARVESTER_CYCLETIME_MS 5
+    #define REFINER_CYCLETIME_MS 25
+    #define NAVIGATOR_CYCLETIME_MS 50
+
     class ThreadManager {
         public:
         /* Define the function signatures for our three tiers */

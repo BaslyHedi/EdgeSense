@@ -1,23 +1,28 @@
 /**
- * @file LSM9DS1_ImuSens.cpp
+ * @file LSM9DS1_ImuSensAccGyro.cpp
  * @author Hedi Basly
- * @brief Implementation of LSM9DS1 ImuSensor module
+ * @brief Implementation of LSM9DS1 ImuSensor module for Accelerometer and Gyroscope
+  * This module provides the implementation for interfacing with the LSM9DS1 IMU sensor, specifically
+  * for reading acceleration and gyroscope data. It includes:
+  * - Initialization of the sensor with appropriate configuration settings for both accelerometer and gyroscope.
+  * - An update method that reads raw data from the sensor registers, converts it to physical units (g for accel, dps for gyro), and stores it in member variables.
+  * - A helper method `stitch` to combine high and low bytes into a signed 16-bit integer, which is necessary for interpreting the raw sensor data correctly.
  * @date 2026-02-16
  */
 
 #include "EdgeSense/Sensors/Sensors.h"
-#include "EdgeSense/Sensors/LSM9DS1_ImuSens.h"
+#include "EdgeSense/Sensors/LSM9DS1_ImuSensAccGyro.h"
 #include "EdgeSense/Logger/Logger.h"
 
 namespace EdgeSense {
     namespace Sensors {
-        LSM9DS1::LSM9DS1(HAL::I2cMaster& bus) : ImuSensor("Accel-Gyro", 0x6A, bus), 
+        LSM9DS1_AccGyro::LSM9DS1_AccGyro(HAL::I2cMaster& bus) : ImuSensors("Accel-Gyro", 0x6A, bus), 
             accel({0.0f, 0.0f, 0.0f}), 
             gyro({0.0f, 0.0f, 0.0f}) {}
 
-        bool LSM9DS1::initialize() {
+        bool LSM9DS1_AccGyro::initialize() {
             uint8_t id = 0;
-            bool configresVal = false;
+            bool configresVal = true;
             bool retVal = true;
             
             // 1. Verify WHO_AM_I (Register 0x0F)
@@ -30,21 +35,21 @@ namespace EdgeSense {
             // 0x44 = [0][1][0][0][0][1][0][0]
             // Bit 6: BDU (Block Data Update) - Wait for all bytes to be read
             // Bit 2: IF_ADD_INC - Auto-increment register address during multi-byte reads
-            configresVal = i2cBus.writeByte(address, 0x22, 0x44);
+            configresVal &= i2cBus.writeByte(address, 0x22, 0x44);
 
             // 3. Gyroscope Setup (CTRL_REG1_G @ 0x10)
             // 0x60 = 119 Hz ODR, 245 dps Full Scale
-            configresVal = i2cBus.writeByte(address, 0x10, 0x60);
+            configresVal &= i2cBus.writeByte(address, 0x10, 0x60);
             
             // Enable Gyro axes (CTRL_REG4 @ 0x1E)
-            configresVal = i2cBus.writeByte(address, 0x1E, 0x38);
+            configresVal &= i2cBus.writeByte(address, 0x1E, 0x38);
 
             // 4. Accelerometer Setup (CTRL_REG6_XL @ 0x20)
             // 0x60 = 119 Hz ODR, +/- 2g Full Scale
-            configresVal = i2cBus.writeByte(address, 0x20, 0x60);
+            configresVal &= i2cBus.writeByte(address, 0x20, 0x60);
 
             // Enable Accel axes (CTRL_REG5_XL @ 0x1F)
-            configresVal = i2cBus.writeByte(address, 0x1F, 0x38);
+            configresVal &= i2cBus.writeByte(address, 0x1F, 0x38);
 
             if (!configresVal) {
                 LOG_ERROR(name + ": Failed to write configuration.");
@@ -55,7 +60,7 @@ namespace EdgeSense {
             return retVal;
         }
 
-        void LSM9DS1::update() {
+        void LSM9DS1_AccGyro::update() {
             uint8_t buf[6];
 
             /* Read Accel (6 bytes starting at 0x28) */
@@ -74,12 +79,11 @@ namespace EdgeSense {
             }
         }
 
-        int16_t LSM9DS1::stitch(uint8_t low, uint8_t high) const {
+        int16_t LSM9DS1_AccGyro::stitch(uint8_t low, uint8_t high) const {
             return static_cast<int16_t>((high << 8) | low);
         }
 
-        Vector3 LSM9DS1::getAcceleration() const { return accel; }
-        Vector3 LSM9DS1::getGyroscope() const { return gyro; }
-        Vector3 LSM9DS1::getMagnetometer() const { return magneto; } 
+        Vector3 LSM9DS1_AccGyro::getAcceleration() const { return accel; }
+        Vector3 LSM9DS1_AccGyro::getGyroscope() const { return gyro; }
     } /* namespace Sensors */
 } /* namespace EdgeSense */

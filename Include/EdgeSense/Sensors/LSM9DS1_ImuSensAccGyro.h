@@ -1,7 +1,7 @@
 /**
- * @file LSM9DS1_ImuSens.h
+ * @file LSM9DS1_ImuSensAccGyro.h
  * @author Hedi Basly
- * @brief Header for LSM9DS1 ImuSensor module
+ * @brief Header for LSM9DS1 ImuSensor module for Accelerometer and Gyroscope
  * @date 2026-02-16
  */
 #pragma once
@@ -11,15 +11,14 @@
 namespace EdgeSense {
     namespace Sensors {
 
-        class LSM9DS1 : public ImuSensor {
+        class LSM9DS1_AccGyro : public ImuSensors {
         public:
-            LSM9DS1 (HAL::I2cMaster& bus);
+            LSM9DS1_AccGyro(HAL::I2cMaster& bus);
             
             bool initialize() override;
             void update() override;
             Vector3 getAcceleration() const override;
             Vector3 getGyroscope() const override;
-            Vector3 getMagnetometer() const override;
 
         private:
             Vector3 accel;
