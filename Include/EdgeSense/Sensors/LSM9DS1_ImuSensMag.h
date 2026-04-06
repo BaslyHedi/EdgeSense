@@ -2,7 +2,7 @@
  * @file LSM9DS1_ImuSensMag.h
  * @author Hedi Basly
  * @brief Header for LSM9DS1 ImuSensor module for Magnetometer
- * @date 2026-02-16
+ * @date 2026-04-05
  */
 #pragma once
 

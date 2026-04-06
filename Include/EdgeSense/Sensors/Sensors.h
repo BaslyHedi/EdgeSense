@@ -22,6 +22,15 @@ namespace EdgeSense {
           * - Getters for sensor name and address to allow access to these properties without exposing internal state.
           * - A protected reference to the I2C bus that derived classes can use for communication with their respective hardware.
          */
+
+         /** 
+         * @brief Sensor Names definitions
+          * These are the default names for the sensors, which can be used for logging and identification purposes.
+          * They can be overridden in derived classes if needed.
+          */
+            #define LPS25HB_ENV_NAME "LPS25HB Pressure-Temperature"
+            #define LSM9DS1_IMU_ACCGYRO_NAME "LSM9DS1 Accel-Gyro"
+            #define LSM9DS1_IMU_MAG_NAME "LSM9DS1 Magneto"
         class Sensor {
         public:
             Sensor(const std::string& name, uint8_t address, HAL::I2cMaster& bus)

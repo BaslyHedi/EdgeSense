@@ -16,7 +16,7 @@
 
 namespace EdgeSense {
     namespace Sensors {
-        LSM9DS1_AccGyro::LSM9DS1_AccGyro(HAL::I2cMaster& bus) : ImuSensors("Accel-Gyro", 0x6A, bus), 
+        LSM9DS1_AccGyro::LSM9DS1_AccGyro(HAL::I2cMaster& bus) : ImuSensors(LSM9DS1_IMU_ACCGYRO_NAME, 0x6A, bus), 
             accel({0.0f, 0.0f, 0.0f}), 
             gyro({0.0f, 0.0f, 0.0f}) {}
 
@@ -56,7 +56,7 @@ namespace EdgeSense {
                 retVal = false;
             }
 
-            LOG_INFO(name + ": Accel/Gyro initialized successfully.");
+            LOG_INFO(name + ": initialized successfully.");
             return retVal;
         }
 

@@ -51,7 +51,7 @@ int main() {
     }
     
     /* --- 1. Harvester Task (1ms) --- */
-    manager.setHarvesterTask([&]() {
+    manager.setHarvesterTask(Tier::HARVESTER, [&]() {
         /* Capture the raw data from the I2C sensors */
         Pi_LPS25HB->update(); 
         Pi_LSM9DS1AG->update();

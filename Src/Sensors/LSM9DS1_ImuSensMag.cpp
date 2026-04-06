@@ -16,7 +16,7 @@
 
 namespace EdgeSense {
     namespace Sensors {
-        LSM9DS1_Mag::LSM9DS1_Mag(HAL::I2cMaster& bus) : ImuSensors("Magneto", 0x1C, bus), 
+        LSM9DS1_Mag::LSM9DS1_Mag(HAL::I2cMaster& bus) : ImuSensors(LSM9DS1_IMU_MAG_NAME, 0x1C, bus), 
             magneto({0.0f, 0.0f, 0.0f}) {}
 
         bool LSM9DS1_Mag::initialize() {
@@ -52,7 +52,7 @@ namespace EdgeSense {
                 retVal = false;
             }
 
-            LOG_INFO(name + ": Magnetometer initialized successfully.");
+            LOG_INFO(name + ": initialized successfully.");
             return retVal;
         }
 
