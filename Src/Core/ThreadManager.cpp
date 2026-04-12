@@ -7,17 +7,23 @@
 #include <EdgeSense/Core/ThreadManager.h>
 #include <EdgeSense/Logger/Logger.h>
 #include <ctime>
+#include <iostream>
 
 namespace EdgeSense {
     namespace Core {
 
-    ThreadManager::ThreadManager() : currentMode(ExecutionMode::IDLE), harvesterMaxJitterNs(0), refinerMaxJitterNs(0), navigatorMaxJitterNs(0) {}
+    ThreadManager::ThreadManager() : currentMode(ExecutionMode::IDLE), harvesterMaxJitterNs(0), refinerMaxJitterNs(0), processMaxJitterNs(0) {}
 
     ThreadManager::~ThreadManager() { stop(); }
 
     void ThreadManager::start() {
-        if (currentMode != ExecutionMode::IDLE) return;
-
+        if (currentMode != ExecutionMode::IDLE || running) {
+            LOG_ERROR("Attempted to start ThreadManager while not in IDLE mode. Start aborted.");
+            return;
+        }
+        /* Initialize running flag */
+        running = true;
+        /* Create threads */
         harvesterThread = std::thread(&ThreadManager::harvesterWrapper, this);
         refinerThread   = std::thread(&ThreadManager::refinerWrapper, this);
         processThread = std::thread(&ThreadManager::processWrapper, this);
@@ -42,7 +48,7 @@ namespace EdgeSense {
         struct timespec next_time;
         clock_gettime(CLOCK_MONOTONIC, &next_time);
 
-        while (currentMode != ExecutionMode::IDLE) {
+        while (running) {
             if(currentMode == ExecutionMode::CALIB) {
                 WaitUntilNextCycle(next_time, HARVESTER_CYCLETIME_MS);
                 updateMaxJitter(next_time, harvesterMaxJitterNs);
@@ -67,21 +73,14 @@ namespace EdgeSense {
     void ThreadManager::refinerWrapper() {
         struct timespec next_time;
         clock_gettime(CLOCK_MONOTONIC, &next_time);
-        while (currentMode != ExecutionMode::IDLE) {
-            if(currentMode == ExecutionMode::CALIB) {
-                WaitUntilNextCycle(next_time, REFINER_CYCLETIME_MS);
-                updateMaxJitter(next_time, refinerMaxJitterNs);
-                /* No logic for refiner in CALIB mode we need raw data */
-            } else if (currentMode != ExecutionMode::APP)
-            {
-                WaitUntilNextCycle(next_time, REFINER_CYCLETIME_MS);
-                updateMaxJitter(next_time, refinerMaxJitterNs);
-
-                /* Execute Calibration Logic */
-                if (AppLogic.refine) {
-                    AppLogic.refine();
-                }
+        while (running) {
+            WaitUntilNextCycle(next_time, REFINER_CYCLETIME_MS);
+            
+            if (currentMode == ExecutionMode::APP && AppLogic.refine) {
+                AppLogic.refine();
             }
+            /* No 'else' for CALIB; thread sleeps to save CPU for math */
+            updateMaxJitter(next_time, refinerMaxJitterNs);
         }
     }
 
@@ -89,7 +88,7 @@ namespace EdgeSense {
         struct timespec next_time;
         clock_gettime(CLOCK_MONOTONIC, &next_time);
 
-        while (currentMode != ExecutionMode::IDLE) {
+        while (running) {
             if(currentMode == ExecutionMode::CALIB) {
                 WaitUntilNextCycle(next_time, PROCESS_CYCLETIME_MS);
                 updateMaxJitter(next_time, processMaxJitterNs);
@@ -98,7 +97,7 @@ namespace EdgeSense {
                 if (CalibLogic.process) {
                     CalibLogic.process();
                 }
-            } else if (currentMode != ExecutionMode::APP)
+            } else if (currentMode == ExecutionMode::APP)
             {
                 WaitUntilNextCycle(next_time, PROCESS_CYCLETIME_MS);
                 updateMaxJitter(next_time, processMaxJitterNs);
@@ -113,6 +112,7 @@ namespace EdgeSense {
 
     void ThreadManager::stop() {
         currentMode = ExecutionMode::IDLE;
+        running = false; /* Signal threads to stop */
         if (harvesterThread.joinable()) harvesterThread.join();
         if (refinerThread.joinable()) refinerThread.join();
         if (processThread.joinable()) processThread.join();
@@ -135,73 +135,67 @@ namespace EdgeSense {
         long long diff = (actual_time.tv_sec - next_time.tv_sec) * 1000000000LL + 
                         (actual_time.tv_nsec - next_time.tv_nsec);
         if (diff > maxJitterNs) maxJitterNs = diff;
-        next_time = actual_time;
     }
 
     /* Setters for the tasks */
-    bool setHarvesterTask(ExecutionMode exMode, TaskFunc task)
+    bool ThreadManager::setHarvesterTask(ExecutionMode exMode, TaskFunc task)
     {
         bool valid = false;
-        if(currentMode == ExecutionMode::IDLE) {
-            if (exMode == ExecutionMode::APP) {
-                AppLogic.harvest = task;
-                valid = true;
-            } else if (exMode == ExecutionMode::CALIB) {
-                CalibLogic.harvest = task;
-            }
-        } else {
-            LOG_ERROR("Cannot set tasks while ThreadManager is running. Please set tasks before calling start().");
+
+        if (exMode == ExecutionMode::APP) {
+            AppLogic.harvest = task;
+            valid = true;
+        } else if (exMode == ExecutionMode::CALIB) {
+            CalibLogic.harvest = task;
+            valid = true;
         }
-        
+
         return valid;
     }
-    bool setRefinerTask(ExecutionMode exMode, TaskFunc task)
+    bool ThreadManager::setRefinerTask(ExecutionMode exMode, TaskFunc task)
     {
         bool valid = false;
-        if(currentMode == ExecutionMode::IDLE) {
-            if (exMode == ExecutionMode::APP) {
-                AppLogic.refine = task;
-                valid = true;
-            }
-        } else {
-            LOG_ERROR("Cannot set tasks while ThreadManager is running. Please set tasks before calling start().");
+        if (exMode == ExecutionMode::APP) {
+            AppLogic.refine = task;
+            valid = true;
         }
+
         return valid;
     }
-    bool setProcessTask(ExecutionMode exMode, TaskFunc task)
+    bool ThreadManager::setProcessTask(ExecutionMode exMode, TaskFunc task)
     {
         bool valid = false;
-        if(currentMode == ExecutionMode::IDLE) {
-            if (exMode == ExecutionMode::APP) {
-                AppLogic.process = task;
-                valid = true;
-            } else if (exMode == ExecutionMode::CALIB) {
-                CalibLogic.process = task;
-                valid = true;
-            }
-        } else {
-            LOG_ERROR("Cannot set tasks while ThreadManager is running. Please set tasks before calling start().");
+
+        if (exMode == ExecutionMode::APP) {
+            AppLogic.process = task;
+            valid = true;
+        } else if (exMode == ExecutionMode::CALIB) {
+            CalibLogic.process = task;
+            valid = true;
         }
+
         return valid;
     }
-    void setExecutionMode(ExecutionMode mode)
+    void ThreadManager::setExecutionMode(ExecutionMode mode)
     { 
         switch (mode)
         {
             case ExecutionMode::APP:
                 LOG_INFO("Switched to APP Mode");
+                currentMode = ExecutionMode::APP;
                 break;
             case ExecutionMode::CALIB:
                 LOG_INFO("Switched to CALIBRATION Mode");
+                currentMode = ExecutionMode::CALIB;
                 break;
             case ExecutionMode::IDLE:
                 LOG_INFO("Switched to IDLE Mode");
+                currentMode = ExecutionMode::IDLE;
                 break;
             default:
                 LOG_ERROR("Invalid Execution Mode when setting mode.");
                 break;
         }     
-        currentMode = mode;
         
         /* Reset Jitter Metrics when mode changes */
         harvesterMaxJitterNs = 0;

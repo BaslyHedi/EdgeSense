@@ -17,24 +17,24 @@
 
 /* * Calibration parameters for all sensors in one struct for easy file I/O 
     * Each sensor gets bias and scale for X/Y/Z axes (except gyro which usually only needs bias) */
-struct FullCalibration {
-    unsigned int session_id;        /* Unique hash to link .bin and .json */
-    float accel_bias[3], accel_scale[3];
-    float gyro_bias[3];             /* Gyros only need bias */
-    float mag_bias[3], mag_scale[3];
-};
+// struct FullCalibration {
+//     unsigned int session_id;        /* Unique hash to link .bin and .json */
+//     float accel_bias[3], accel_scale[3];
+//     float gyro_bias[3];             /* Gyros only need bias */
+//     float mag_bias[3], mag_scale[3];
+// };
 
-class SensorCalib {
-public:
-    /* Define the path to your new root folder */
-    const std::string CALIB_DIR = "./CalibData/";
-    const std::string CALIB_FILE_BIN = CALIB_DIR + "imu_offsets.bin";
-    const std::string CALIB_FILE_JSON = CALIB_DIR + "imu_offsets.json";
+// class SensorCalib {
+// public:
+//     /* Define the path to your new root folder */
+//     const std::string CALIB_DIR = "./CalibData/";
+//     const std::string CALIB_FILE_BIN = CALIB_DIR + "imu_offsets.bin";
+//     const std::string CALIB_FILE_JSON = CALIB_DIR + "imu_offsets.json";
 
-    bool saveToFile(const FullCalibration& calib);
-    bool loadFromFile(FullCalibration& calib);
-    bool isCalibFileExists() const;
+//     bool saveToFile(const FullCalibration& calib);
+//     bool loadFromFile(FullCalibration& calib);
+//     bool isCalibFileExists() const;
 
-    /* The interactive guide logic */
-    void runInteractiveCalibration(I2cMaster& i2c, ImuSensors& sensor)
-};
+//     /* The interactive guide logic */
+//     void runInteractiveCalibration(I2cMaster& i2c, ImuSensors& sensor)
+// };

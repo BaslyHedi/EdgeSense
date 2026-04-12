@@ -2,7 +2,7 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Deploy & Debug on RPi 5",
+            "name": "Cross-Debug EdgeSense (RPi5)",
             "type": "cppdbg",
             "request": "launch",
             "program": "/home/hedi/EdgeSenseApp",
@@ -13,7 +13,43 @@
             "externalConsole": false,
             "MIMode": "gdb",
             "miDebuggerPath": "/usr/bin/gdb-multiarch",
-            "miDebuggerServerAddress": "Hedi-RPi5.local:2345",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Set sysroot for remote debugging",
+                    "text": "set sysroot remote:/",
+                    "ignoreFailures": false
+                }
+            ],
+            "pipeTransport": {
+                "pipeCwd": "${workspaceFolder}",
+                "pipeProgram": "/usr/bin/ssh",
+                "pipeArgs": [
+                    "hedi@Hedi-RPi5.local"
+                ],
+                "debuggerPath": "/usr/bin/gdb"
+            },
+            "preLaunchTask": "Deploy to HediPi",
+            "sourceFileMap": {
+                "/media/hedi/Work/Linux/MyLinuxProject/Code/EdgeSense": "${workspaceFolder}"
+            }
+        },
+        {
+            "name": "Debug EdgeSense (Host)",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/host/EdgeSenseApp",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb",
             "setupCommands": [
                 {
                     "description": "Enable pretty-printing for gdb",
@@ -21,7 +57,7 @@
                     "ignoreFailures": true
                 }
             ],
-            "preLaunchTask": "Deploy to HediPi"
+            "preLaunchTask": "CMake: build"
         }
     ]
 }

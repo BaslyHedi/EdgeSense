@@ -16,7 +16,7 @@ namespace EdgeSense {
      * @param accey The filtered Y-axis acceleration
      * @param accez The filtered Z-axis acceleration
      */
-    void SensorRegistry::updateFilteredImuAccel(float accex, float accey, float accez) {
+    void SensorsRegistry::updateFilteredImuAccel(float accex, float accey, float accez) {
         std::lock_guard<std::mutex> lock(dataMutex);
         f_accex = accex; f_accey = accey; f_accez = accez;
     }
@@ -27,7 +27,7 @@ namespace EdgeSense {
      * @param accey Reference to store the filtered Y-axis acceleration
      * @param accez Reference to store the filtered Z-axis acceleration
      */
-    void SensorRegistry::getFilteredImuAccel(float& accex, float& accey, float& accez) {
+    void SensorsRegistry::getFilteredImuAccel(float& accex, float& accey, float& accez) {
         std::lock_guard<std::mutex> lock(dataMutex);
         accex = f_accex; accey = f_accey; accez = f_accez;
     }
@@ -38,7 +38,7 @@ namespace EdgeSense {
      * @param gyroy The filtered Y-axis angular velocity
      * @param gyroz The filtered Z-axis angular velocity
      */
-    void SensorRegistry::updateFilteredImuGyro(float gyrox, float gyroy, float gyroz) {
+    void SensorsRegistry::updateFilteredImuGyro(float gyrox, float gyroy, float gyroz) {
         std::lock_guard<std::mutex> lock(dataMutex);
         f_gyrox = gyrox; f_gyroy = gyroy; f_gyroz = gyroz;
     }
@@ -49,7 +49,7 @@ namespace EdgeSense {
      * @param gyroy Reference to store the filtered Y-axis angular velocity
      * @param gyroz Reference to store the filtered Z-axis angular velocity
      */
-    void SensorRegistry::getFilteredImuGyro(float& gyrox, float& gyroy, float& gyroz) {
+    void SensorsRegistry::getFilteredImuGyro(float& gyrox, float& gyroy, float& gyroz) {
         std::lock_guard<std::mutex> lock(dataMutex);
         gyrox = f_gyrox; gyroy = f_gyroy; gyroz = f_gyroz;
     }
@@ -60,7 +60,7 @@ namespace EdgeSense {
      * @param magy The filtered Y-axis magnetic field strength
      * @param magz The filtered Z-axis magnetic field strength
      */
-    void SensorRegistry::updateFilteredImuMag(float magx, float magy, float magz) {
+    void SensorsRegistry::updateFilteredImuMag(float magx, float magy, float magz) {
         std::lock_guard<std::mutex> lock(dataMutex);
         f_magx = magx; f_magy = magy; f_magz = magz;
     }
@@ -71,7 +71,7 @@ namespace EdgeSense {
      * @param magy Reference to store the filtered Y-axis magnetic field strength
      * @param magz Reference to store the filtered Z-axis magnetic field strength
      */
-    void SensorRegistry::getFilteredImuMag(float& magx, float& magy, float& magz) {
+    void SensorsRegistry::getFilteredImuMag(float& magx, float& magy, float& magz) {
         std::lock_guard<std::mutex> lock(dataMutex);
         magx = f_magx; magy = f_magy; magz = f_magz;
     }
@@ -81,7 +81,7 @@ namespace EdgeSense {
      * @param press The filtered pressure
      * @param temp The filtered temperature
      */
-    void SensorRegistry::updateFilteredEnv(float press, float temp) {
+    void SensorsRegistry::updateFilteredEnv(float press, float temp) {
         std::lock_guard<std::mutex> lock(dataMutex);
         f_pressure = press;
         f_temp = temp;
@@ -92,7 +92,7 @@ namespace EdgeSense {
      * @param press Reference to store the filtered pressure
      * @param temp Reference to store the filtered temperature
      */
-    void SensorRegistry::getFilteredEnv(float& press, float& temp) {
+    void SensorsRegistry::getFilteredEnv(float& press, float& temp) {
         std::lock_guard<std::mutex> lock(dataMutex);
         press = f_pressure;
         temp = f_temp;

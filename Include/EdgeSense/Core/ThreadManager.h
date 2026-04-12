@@ -23,6 +23,10 @@ namespace EdgeSense {
     #define REFINER_CYCLETIME_MS 25
     #define PROCESS_CYCLETIME_MS 50
 
+    /* Debug Mode */
+    #define DEBUG_MODE true
+    #define LOG_DEBUG(msg) do { if (DEBUG_MODE) std::cout << "[DEBUG] " << msg << std::endl; } while(0)
+
     class ThreadManager {
         public:
             /* Define the function signatures for our 4 tiers */
@@ -41,6 +45,9 @@ namespace EdgeSense {
 
             /* Setter for execution mode */
             void setExecutionMode(ExecutionMode mode);
+
+            /* Getter for execution mode */
+            ExecutionMode getExecutionMode() const { return currentMode; }
 
             /* Jitter Telemetry */
             long long getMaxJitter(Tier tier) const {
@@ -77,6 +84,8 @@ namespace EdgeSense {
             std::atomic<long long> harvesterMaxJitterNs{0};
             std::atomic<long long> refinerMaxJitterNs{0};
             std::atomic<long long> processMaxJitterNs{0};
+
+            bool running = false; /* To signal threads to stop */
         };
 
     } /* namespace Core */

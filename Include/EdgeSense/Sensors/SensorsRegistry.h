@@ -14,11 +14,11 @@
 namespace EdgeSense {
     namespace Sensors {
 
-    class SensorRegistry {
+    class SensorsRegistry {
         public:
             // Access the single instance (Singleton Pattern)
-            static SensorRegistry& getInstance() {
-                static SensorRegistry instance;
+            static SensorsRegistry& getInstance() {
+                static SensorsRegistry instance;
                 return instance;
             }
 
@@ -47,7 +47,7 @@ namespace EdgeSense {
             void getFilteredEnv(float& press, float& temp);
 
         private:
-            SensorRegistry() = default; // Private constructor for Singleton
+            SensorsRegistry() = default; // Private constructor for Singleton
 
             /* Buffers for orientation high-speed raw data */
             Utils::CircularBuffer<Vector3, 50> accelRawBuffer;
