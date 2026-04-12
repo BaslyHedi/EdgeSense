@@ -12,7 +12,8 @@
 #include <EdgeSense/Sensors/LSM9DS1_ImuSensAccGyro.h>
 #include <EdgeSense/Sensors/SensorsRegistry.h>
 #include <EdgeSense/Core/ThreadManager.h>
-#include <EdgeSense/Sensors/SensorCalib.h>
+#include <EdgeSense/Core/CalibDataStore.h>
+#include <EdgeSense/Core/CalibrationEngine.h>
 
 namespace EdgeSense {
     namespace Core {

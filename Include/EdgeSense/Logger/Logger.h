@@ -79,5 +79,5 @@ namespace EdgeSense {
     #define LOG_WARN(msg) EdgeSense::Logger::Logger::getInstance().log(EdgeSense::Logger::LogLevel::WARNING, msg)
     #define LOG_ERROR(msg) EdgeSense::Logger::Logger::getInstance().log(EdgeSense::Logger::LogLevel::ERROR, msg)
 
-    } // namespace Logger
-} // namespace EdgeSense
+    } /* namespace Logger */
+} /* namespace EdgeSense */

@@ -34,6 +34,7 @@ set(PROJECT_SOURCES
     # Core Modules
     Src/Core/ThreadManager.cpp
     Src/Core/SensorManager.cpp
+    Src/Core/CalibDataStore.cpp
     #  HAL Modules
     Src/HAL/I2cMaster.cpp
     # IPC Socket Server

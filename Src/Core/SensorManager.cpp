@@ -129,7 +129,7 @@ namespace EdgeSense {
         registry.getFilteredImuMag(mx, my, mz);
         registry.getFilteredEnv(press, temp);
 
-        /* Print to console at 10Hz (every 100ms) to avoid CPU bloat */
+        /* Log sensor data at 10Hz (every 100ms) to avoid CPU bloat */
         if (++printDivisor >= 10) {
             std::cout << std::fixed << std::setprecision(2);
         
@@ -139,14 +139,15 @@ namespace EdgeSense {
                 [ENV] = Atmosphere 
                 [JIT] = OS Health 
             */
-        std::cout << "\r[IMU] A(" << ax << "," << ay << ") G(" << gx << "," << gy << ") "
-                  << "[MAG] M(" << mx << "," << my << "," << mz << ") "
-                  << "[ENV] P:" << press << " T:" << temp << "C "
-                  << "| Jitter(H/R/N): " 
-                  << (tm.getMaxJitter(EdgeSense::Core::Tier::HARVESTER) / 1000) << "/"
-                  << (tm.getMaxJitter(EdgeSense::Core::Tier::REFINER) / 1000) << "/"
-                  << (tm.getMaxJitter(EdgeSense::Core::Tier::PROCESS) / 1000) << " us"
-                  << std::flush;
+            std::cout << "\033[2J\033[H"  // Clear screen and home cursor
+                      << "[IMU] Accel: (" << ax << ", " << ay << ", " << az << ")\n"
+                      << "      Gyro:  (" << gx << ", " << gy << ", " << gz << ")\n"
+                      << "[MAG] Mag:   (" << mx << ", " << my << ", " << mz << ")\n"
+                      << "[ENV] Press:  " << press << " hPa,  Temp: " << temp << " C\n"
+                      << "[JIT] H: " << (tm.getMaxJitter(EdgeSense::Core::Tier::HARVESTER) / 1000) << " us, "
+                      << "R: " << (tm.getMaxJitter(EdgeSense::Core::Tier::REFINER) / 1000) << " us, "
+                      << "P: " << (tm.getMaxJitter(EdgeSense::Core::Tier::PROCESS) / 1000) << " us\n"
+                      << std::flush;
             
             printDivisor = 0;
         }
