@@ -99,6 +99,15 @@ namespace EdgeSense {
             void computeOffsets();
             bool verifyCalibration();
             void transitionToNextPosition();
+
+            /* Position validation and user guidance */
+            bool validatePosition(const Vector3& reading);
+            void provideOrientationGuidance(const Vector3& reading);
+
+            /* Validation state tracking */
+            int validationAttempts = 0;
+            const int MAX_VALIDATION_ATTEMPTS = 3;
+            const float ORIENTATION_THRESHOLD = 3.0f;  /* m/s^2, threshold for dominant axis */
         };
 
     } /* namespace Sensors */

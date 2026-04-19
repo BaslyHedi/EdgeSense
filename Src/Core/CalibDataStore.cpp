@@ -2,7 +2,7 @@
  * @file CalibDataStore.cpp
  * @author Hedi Basly
  * @brief Implementation of calibration data persistence and file I/O management
- * @date 2026-04-12
+ * @date 2026-04-19
  */
 
 #include <EdgeSense/Core/CalibDataStore.h>
@@ -206,7 +206,6 @@ namespace EdgeSense {
                 if (end == std::string::npos) return false;
                 
                 std::string arrayStr = content.substr(pos + 1, end - pos - 1);
-                size_t idx = 0;
                 
                 for (int i = 0; i < 3; ++i) {
                     try {

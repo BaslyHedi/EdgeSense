@@ -2,7 +2,7 @@
  * @file CalibrationEngine.cpp
  * @author Hedi Basly
  * @brief Implementation of multi-sensor calibration orchestrator
- * @date 2026-04-12
+ * @date 2026-04-19
  */
 
 #include <EdgeSense/Core/CalibrationEngine.h>
@@ -99,7 +99,6 @@ namespace EdgeSense {
             }
 
             auto& registry = SensorsRegistry::getInstance();
-            Sensors::CalibratorBase* activeCal = calibrationSequence[currentSensorIndex].calibrator;
 
             /* Route raw samples to the active calibrator based on sensor type */
             if (currentSensorIndex == 0) {
@@ -317,7 +316,7 @@ namespace EdgeSense {
             }
         }
 
-        void CalibrationEngine::applyEnvironmentalCalibration(float& pressure, float& temperature) {
+        void CalibrationEngine::applyEnvironmentalCalibration([[maybe_unused]] float& pressure, [[maybe_unused]] float& temperature) {
             /* For environmental sensors, we just log the baseline but don't apply correction */
             /* Pressure and temperature are typically stable enough without active correction */
             /* This method exists for future use if differential corrections are needed */

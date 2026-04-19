@@ -35,6 +35,7 @@ set(PROJECT_SOURCES
     Src/Core/ThreadManager.cpp
     Src/Core/SensorManager.cpp
     Src/Core/CalibDataStore.cpp
+    Src/Core/CalibrationEngine.cpp
     #  HAL Modules
     Src/HAL/I2cMaster.cpp
     # IPC Socket Server
@@ -46,6 +47,11 @@ set(PROJECT_SOURCES
     Src/Sensors/LSM9DS1_ImuSensAccGyro.cpp
     Src/Sensors/LSM9DS1_ImuSensMag.cpp
     Src/Sensors/LPS25HB_EnvSens.cpp
+    # Sensor Calibration
+    Src/Sensors/AccelCalibrator.cpp
+    Src/Sensors/GyroCalibrator.cpp
+    Src/Sensors/MagCalibrator.cpp
+    Src/Sensors/PressureTempCalibrator.cpp
     # Utility Functions
     Src/Utils/Utils.cpp
 )

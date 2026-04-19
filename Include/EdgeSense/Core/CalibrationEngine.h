@@ -144,6 +144,12 @@ namespace EdgeSense {
                 return calibData;
             }
 
+            /**
+             * @brief Save all calibration data to persistent storage
+             * @return true if save successful
+             */
+            bool saveAllCalibrationData();
+
         private:
             CalibrationEngine();  /* Private constructor for Singleton */
             ~CalibrationEngine();
@@ -181,12 +187,6 @@ namespace EdgeSense {
              * @brief Transition to next sensor in calibration sequence
              */
             void transitionToNextSensor();
-
-            /**
-             * @brief Save all calibration data to persistent storage
-             * @return true if save successful
-             */
-            bool saveAllCalibrationData();
 
             /**
              * @brief Load existing calibration from disk (if available)

@@ -50,13 +50,20 @@ namespace EdgeSense {
     }
 
     void SensorManager::calibHarvestAction() {
-        
-        
+        /* Harvest raw samples from sensors */
+        Pi_LSM9DS1AG->update();
+        Pi_LSM9DS1Mag->update();
+        Pi_LPS25HB->update();
+
+        /* Let CalibrationEngine collect samples from registry */
+        auto& engine = EdgeSense::Core::CalibrationEngine::getInstance();
+        engine.harvestRawSamples();
     }
 
     void SensorManager::calibProcessAction() {
-        
-        
+        /* Process calibration state machine at 100Hz */
+        auto& engine = EdgeSense::Core::CalibrationEngine::getInstance();
+        engine.processCalibration();
     }
 
     void SensorManager::appHarvestAction() {
@@ -174,15 +181,33 @@ namespace EdgeSense {
     }
 
     void SensorManager::runCalibration() {
+        LOG_INFO("Starting calibration mode...");
+        
         tm.stop(); /* Ensure clean slate */
         tm.start();
         tm.setExecutionMode(ExecutionMode::CALIB);
         
-        /* TODO: SensorCalib will run the calibration routine until finished */
-        /* calibrator.executeInteractiveSequence(); */
+        /* Initialize and start the calibration sequence */
+        auto& engine = EdgeSense::Core::CalibrationEngine::getInstance();
+        if (!engine.startCalibrationSequence()) {
+            LOG_ERROR("Failed to start calibration sequence");
+            tm.setExecutionMode(ExecutionMode::APP);
+            return;
+        }
         
-        /* Auto-transition back to APP once done */
-        // runApplication();
+        /* Wait for calibration to complete */
+        while (!engine.isCalibrationComplete()) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+        
+        LOG_INFO("Calibration sequence complete");
+        
+        /* Save calibration data */
+        engine.saveAllCalibrationData();
+        
+        /* Return to application mode */
+        LOG_INFO("Returning to application mode");
+        tm.setExecutionMode(ExecutionMode::APP);
     }
 
     } /* namespace Core */

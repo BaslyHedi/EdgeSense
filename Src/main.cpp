@@ -2,12 +2,13 @@
  * @file main.cpp
  * @author Hedi Basly
  * @brief Entry point for EdgeSense Application
- * @date 2026-02-16
+ * @date 2026-04-19
  */
 #include <iomanip>
 #include <iostream>
 #include <thread>
 #include <chrono>
+#include <string>
 #include <EdgeSense/Logger/Logger.h>
 #include <EdgeSense/Core/ThreadManager.h>
 #include <EdgeSense/Core/SensorManager.h>
@@ -19,7 +20,19 @@
 
 using namespace EdgeSense::Core;
 
-int main() {
+int main(int argc, char* argv[]) {
+    bool calibrationMode = false;
+    
+    /* Parse command line arguments */
+    for (int i = 1; i < argc; ++i) {
+        std::string arg(argv[i]);
+        if (arg == "--calib" || arg == "-c") {
+            calibrationMode = true;
+            LOG_INFO("Calibration mode enabled via command line flag");
+            break;
+        }
+    }
+    
     ThreadManager ThreadManager;
     SensorManager sensorManager(ThreadManager);
     LOG_DEBUG("EdgeSense Version: " << GIT_COMMIT_HASH);
@@ -28,8 +41,18 @@ int main() {
     LOG_INFO("🚀 EdgeSense starting on Hedi-RPi5!");
     LOG_WARN("Log file will be stored at /var/log/EdgeSenseApp.log");
 
-    sensorManager.init();
-    sensorManager.runApplication();
+    if (!sensorManager.init()) {
+        LOG_ERROR("Failed to initialize SensorManager");
+        return 1;
+    }
+    
+    if (calibrationMode) {
+        LOG_INFO("Running in CALIBRATION mode");
+        sensorManager.runCalibration();
+    } else {
+        LOG_INFO("Running in APPLICATION mode");
+        sensorManager.runApplication();
+    }
     
     /* Keep main alive and monitor thread mode */
     while(true) { 
