@@ -57,7 +57,7 @@ namespace EdgeSense {
 
             /* Try to load existing calibration as baseline */
             if (!loadExistingCalibration()) {
-                LOG_WARN("No existing calibration found. Starting fresh calibration sequence.");
+                std::cout << "\n[CALIB] No existing calibration found. Starting fresh calibration sequence.\n" << std::flush;
                 
                 /* Initialize calibData with defaults */
                 calibData.session_id = 0;
@@ -78,7 +78,7 @@ namespace EdgeSense {
                 currentState = CalibState::ERROR;
                 retVal = false;
             } else {
-                LOG_INFO("Calibration sequence started. " + std::to_string(calibrationSequence.size()) + " sensors to calibrate.");
+                std::cout << "[CALIB] Initialization complete. " << calibrationSequence.size() << " sensors ready for calibration.\n\n" << std::flush;
                 promptUserForNextSensor();
             }
 
@@ -143,9 +143,8 @@ namespace EdgeSense {
                 /* User confirmed - start the calibration */
                 if (activeCal->startCalibration()) {
                     currentState = CalibState::IN_PROGRESS;
-                    LOG_INFO("Started calibration for: " + calibrationSequence[currentSensorIndex].name);
                 } else {
-                    LOG_ERROR("Failed to start calibration for: " + calibrationSequence[currentSensorIndex].name);
+                    std::cout << "[CALIB ERROR] Failed to start calibration for: " << calibrationSequence[currentSensorIndex].name << "\n" << std::flush;
                     currentState = CalibState::ERROR;
                 }
             } else if (currentState == CalibState::IN_PROGRESS) {
@@ -154,7 +153,7 @@ namespace EdgeSense {
 
                 /* Check if this sensor's calibration is complete */
                 if (activeCal->isComplete()) {
-                    LOG_INFO("Calibration complete for: " + calibrationSequence[currentSensorIndex].name);
+                    std::cout << "\n[CALIB] ✓ Calibration complete for: " << calibrationSequence[currentSensorIndex].name << "\n" << std::flush;
                     calibrationSequence[currentSensorIndex].isComplete = true;
 
                     /* Move to next sensor */
@@ -175,10 +174,13 @@ namespace EdgeSense {
                 if (saveAllCalibrationData()) {
                     currentState = CalibState::COMPLETE;
                     calibrationComplete = true;
-                    LOG_INFO("ALL CALIBRATION COMPLETE. Data saved to disk.");
+                    std::cout << "\n" << std::string(60, '=') << "\n";
+                    std::cout << "✓✓✓ ALL CALIBRATION COMPLETE ✓✓✓\n";
+                    std::cout << "Data saved to disk.\n";
+                    std::cout << std::string(60, '=') << "\n" << std::flush;
                 } else {
                     currentState = CalibState::ERROR;
-                    LOG_ERROR("Failed to save calibration data!");
+                    std::cout << "[CALIB ERROR] Failed to save calibration data!\n" << std::flush;
                 }
             }
         }
@@ -194,8 +196,9 @@ namespace EdgeSense {
             std::cout << "Sensor: " << calibrationSequence[currentSensorIndex].name << "\n";
             std::cout << std::string(60, '=') << "\n";
             std::cout << getStatusMessage() << "\n";
-            std::cout << "\nPress ENTER to begin calibration for " 
+            std::cout << "\nSTEP 1: Press ENTER to initialize calibration for " 
                       << calibrationSequence[currentSensorIndex].name << "...\n";
+            std::cout << "(You will be prompted for specific positions/actions after this)\n";
             std::cin.ignore();
         }
 

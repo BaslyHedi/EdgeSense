@@ -103,11 +103,15 @@ namespace EdgeSense {
             /* Position validation and user guidance */
             bool validatePosition(const Vector3& reading);
             void provideOrientationGuidance(const Vector3& reading);
+            bool promptRetryOrAbort();
+            void displayLiveValues(const Vector3& reading);  /* Live X/Y/Z display during WAIT states */
+            bool isEnterPressed();                           /* Non-blocking stdin ENTER check */
 
             /* Validation state tracking */
             int validationAttempts = 0;
+            bool captureStarted = false;  /* Track if we've printed "Position OK" message */
             const int MAX_VALIDATION_ATTEMPTS = 3;
-            const float ORIENTATION_THRESHOLD = 3.0f;  /* m/s^2, threshold for dominant axis */
+            const float ORIENTATION_THRESHOLD = 0.5f;  /* g units, minimum gravity reading on expected axis (1.0g = 9.81 m/s^2) */
         };
 
     } /* namespace Sensors */

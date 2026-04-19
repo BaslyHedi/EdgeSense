@@ -27,7 +27,8 @@ namespace EdgeSense {
             collectedSamples = 0;
             targetSampleCount = CAPTURE_SAMPLES;
 
-            LOG_INFO("Magnetometer calibration starting. Target samples: " + std::to_string(CAPTURE_SAMPLES));
+            std::cout << "\n✓ STEP 1 accepted. Magnetometer calibration initialized.\n";
+            std::cout << "[MAG] Total samples needed: " << CAPTURE_SAMPLES << "\n\n" << std::flush;
             promptRotationSequence();
             return true;
         }

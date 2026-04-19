@@ -24,9 +24,10 @@ namespace EdgeSense {
             collectedSamples = 0;
             targetSampleCount = BASELINE_SAMPLES;
 
-            LOG_INFO("Pressure/Temperature calibration starting. Target samples: " + std::to_string(BASELINE_SAMPLES));
+            std::cout << "\n✓ STEP 1 accepted. Pressure/Temperature calibration initialized.\n";
+            std::cout << "[PRES] Total samples needed: " << BASELINE_SAMPLES << "\n\n" << std::flush;
 
-            std::cout << "\n" << std::string(50, '-') << "\n";
+            std::cout << std::string(50, '-') << "\n";
             std::cout << "PRESSURE/TEMPERATURE CALIBRATION\n";
             std::cout << "Capturing baseline readings\n";
             std::cout << "Keep the device stationary\n";

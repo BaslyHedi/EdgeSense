@@ -26,7 +26,8 @@ namespace EdgeSense {
             collectedSamples = 0;
             targetSampleCount = CAPTURE_SAMPLES;
 
-            LOG_INFO("Gyroscope calibration starting. Target samples: " + std::to_string(CAPTURE_SAMPLES));
+            std::cout << "\n✓ STEP 1 accepted. Gyroscope calibration initialized.\n";
+            std::cout << "[GYRO] Total samples needed: " << CAPTURE_SAMPLES << "\n\n" << std::flush;
             promptStaticPosition();
             return true;
         }
@@ -146,19 +147,20 @@ namespace EdgeSense {
             gyro_bias[2] = sumZ / static_cast<float>(samples.size());
 
             LOG_INFO("Gyroscope bias computed:");
-            LOG_INFO("  Bias (rad/s): [" + std::to_string(gyro_bias[0]) + ", " 
+            LOG_INFO("  Bias (dps): [" + std::to_string(gyro_bias[0]) + ", "
                 + std::to_string(gyro_bias[1]) + ", " + std::to_string(gyro_bias[2]) + "]");
         }
 
         bool GyroCalibrator::verifyCalibration() {
             /* Verify that computed bias is reasonable (not too large) */
-            const float MAX_BIAS_THRESHOLD = 0.1f;  /* rad/s - typical gyro bias is <0.05 rad/s */
+            /* Gyro driver outputs in dps (0.00875 dps/LSB). LSM9DS1 typical at-rest bias is <5 dps */
+            const float MAX_BIAS_THRESHOLD = 10.0f;  /* dps */
             bool validCalibration = true;
 
             for (int i = 0; i < 3; ++i) {
                 if (std::abs(gyro_bias[i]) > MAX_BIAS_THRESHOLD) {
-                    LOG_WARN("Axis " + std::to_string(i) + " bias " + std::to_string(gyro_bias[i]) 
-                        + " exceeds threshold");
+                    std::cout << "[GYRO] Axis " << i << " bias " << gyro_bias[i] 
+                        << " exceeds threshold\n" << std::flush;
                     validCalibration = false;
                 }
             }
@@ -178,9 +180,9 @@ namespace EdgeSense {
                 varZ /= static_cast<float>(samples.size());
 
                 if (varX > VARIANCE_THRESHOLD || varY > VARIANCE_THRESHOLD || varZ > VARIANCE_THRESHOLD) {
-                    LOG_WARN("Gyroscope variance too high - device may not have been still");
-                    LOG_WARN("  Variance (rad^2/s^2): [" + std::to_string(varX) + ", " 
-                        + std::to_string(varY) + ", " + std::to_string(varZ) + "]");
+                    std::cout << "[GYRO] Variance too high - device may not have been still\n";
+                    std::cout << "  Variance (dps^2): [" << varX << ", "
+                        << varY << ", " << varZ << "]\n" << std::flush;
                     validCalibration = false;
                 }
             }

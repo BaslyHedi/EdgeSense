@@ -55,7 +55,17 @@ namespace EdgeSense {
         Pi_LSM9DS1Mag->update();
         Pi_LPS25HB->update();
 
-        /* Let CalibrationEngine collect samples from registry */
+        /* Push raw data into registry so calibration engine can access it */
+        auto& registry = EdgeSense::Sensors::SensorsRegistry::getInstance();
+
+        registry.getAccelRawBuffer().push(Pi_LSM9DS1AG->getAcceleration());
+        registry.getGyroRawBuffer().push(Pi_LSM9DS1AG->getGyroscope());
+        registry.getMagRawBuffer().push(Pi_LSM9DS1Mag->getMagnetometer());
+
+        registry.getPressure().push(Pi_LPS25HB->getPressure());
+        registry.getTemperature().push(Pi_LPS25HB->getTemperature());
+
+        /* CalibrationEngine will collect samples from registry via harvestRawSamples() */
         auto& engine = EdgeSense::Core::CalibrationEngine::getInstance();
         engine.harvestRawSamples();
     }
@@ -186,7 +196,7 @@ namespace EdgeSense {
         tm.stop(); /* Ensure clean slate */
         tm.start();
         tm.setExecutionMode(ExecutionMode::CALIB);
-        
+
         /* Initialize and start the calibration sequence */
         auto& engine = EdgeSense::Core::CalibrationEngine::getInstance();
         if (!engine.startCalibrationSequence()) {
