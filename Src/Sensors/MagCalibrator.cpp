@@ -34,9 +34,10 @@ namespace EdgeSense {
         }
 
         bool MagCalibrator::processCalibration() {
+            bool retVal = true;
             if (state == MagState::IDLE || state == MagState::COMPLETE || state == MagState::ERROR) {
-                return false;
-            }
+                retVal = false;
+            } else {
 
             auto& registry = SensorsRegistry::getInstance();
 
@@ -85,9 +86,10 @@ namespace EdgeSense {
 
                 default:
                     break;
+                }
             }
 
-            return true;
+            return retVal;
         }
 
         bool MagCalibrator::isComplete() const {
@@ -135,12 +137,8 @@ namespace EdgeSense {
         }
 
         void MagCalibrator::computeOffsets() {
-            if (static_cast<int>(samples.size()) < CAPTURE_SAMPLES) {
-                LOG_ERROR("Insufficient samples for magnetometer calibration");
-                return;
-            }
-
-            /* Hard-iron calibration using min-max method */
+            if (static_cast<int>(samples.size()) >= CAPTURE_SAMPLES) {
+                /* Hard-iron calibration using min-max method */
             float minX = 999999, maxX = -999999;
             float minY = 999999, maxY = -999999;
             float minZ = 999999, maxZ = -999999;
@@ -159,19 +157,18 @@ namespace EdgeSense {
             mag_bias[1] = (maxY + minY) / 2.0f;
             mag_bias[2] = (maxZ + minZ) / 2.0f;
 
-            LOG_INFO("Magnetometer hard-iron bias computed (min-max method):");
-            LOG_INFO("  Hard-iron offset (µT): [" + std::to_string(mag_bias[0]) + ", " 
-                + std::to_string(mag_bias[1]) + ", " + std::to_string(mag_bias[2]) + "]");
+                LOG_INFO("Magnetometer hard-iron bias computed (min-max method):");
+                LOG_INFO("  Hard-iron offset (uT): [" + std::to_string(mag_bias[0]) + ", "
+                    + std::to_string(mag_bias[1]) + ", " + std::to_string(mag_bias[2]) + "]");
+            } else {
+                LOG_ERROR("Insufficient samples for magnetometer calibration");
+            }
         }
 
         void MagCalibrator::fitEllipsoid() {
             /* Simplified soft-iron calibration using axis magnitude scaling */
-            if (static_cast<int>(samples.size()) < CAPTURE_SAMPLES) {
-                LOG_ERROR("Insufficient samples for ellipsoid fitting");
-                return;
-            }
-
-            /* Calculate radius for each axis (distance from hard-iron center) */
+            if (static_cast<int>(samples.size()) >= CAPTURE_SAMPLES) {
+                /* Calculate radius for each axis (distance from hard-iron center) */
             float radX = 999999, radY = 999999, radZ = 999999;
             
             for (const auto& sample : samples) {
@@ -198,50 +195,52 @@ namespace EdgeSense {
                 mag_scale[2] = 1.0f;
             }
 
-            LOG_INFO("Magnetometer soft-iron scale computed (ellipsoid fitting):");
-            LOG_INFO("  Soft-iron scale: [" + std::to_string(mag_scale[0]) + ", " 
-                + std::to_string(mag_scale[1]) + ", " + std::to_string(mag_scale[2]) + "]");
+                LOG_INFO("Magnetometer soft-iron scale computed (ellipsoid fitting):");
+                LOG_INFO("  Soft-iron scale: [" + std::to_string(mag_scale[0]) + ", "
+                    + std::to_string(mag_scale[1]) + ", " + std::to_string(mag_scale[2]) + "]");
+            } else {
+                LOG_ERROR("Insufficient samples for ellipsoid fitting");
+            }
         }
 
         bool MagCalibrator::verifyCalibration() {
             /* Verify that corrected samples form a sphere */
-            if (static_cast<int>(samples.size()) < CAPTURE_SAMPLES) {
-                return false;
+            bool retVal = false;
+            if (static_cast<int>(samples.size()) >= CAPTURE_SAMPLES) {
+                /* Calculate corrected magnitudes */
+                float sumRadius = 0;
+                float minRadius = 999999, maxRadius = 0;
+
+                for (const auto& sample : samples) {
+                    /* Apply hard-iron correction */
+                    float cx = sample.x - mag_bias[0];
+                    float cy = sample.y - mag_bias[1];
+                    float cz = sample.z - mag_bias[2];
+
+                    /* Apply soft-iron scaling */
+                    cx *= mag_scale[0];
+                    cy *= mag_scale[1];
+                    cz *= mag_scale[2];
+
+                    /* Calculate radius */
+                    float radius = std::sqrt(cx*cx + cy*cy + cz*cz);
+                    sumRadius += radius;
+                    minRadius = std::min(minRadius, radius);
+                    maxRadius = std::max(maxRadius, radius);
+                }
+
+                float avgRadius = sumRadius / static_cast<float>(samples.size());
+                float radiusVariance = maxRadius - minRadius;
+
+                LOG_INFO("Magnetometer verification statistics:");
+                LOG_INFO("  Average radius: " + std::to_string(avgRadius) + " uT");
+                LOG_INFO("  Min radius: " + std::to_string(minRadius) + " uT");
+                LOG_INFO("  Max radius: " + std::to_string(maxRadius) + " uT");
+                LOG_INFO("  Variance: " + std::to_string(radiusVariance) + " uT");
+
+                retVal = (radiusVariance < VARIANCE_THRESHOLD);
             }
-
-            /* Calculate corrected magnitudes */
-            float sumRadius = 0;
-            float minRadius = 999999, maxRadius = 0;
-
-            for (const auto& sample : samples) {
-                /* Apply hard-iron correction */
-                float cx = sample.x - mag_bias[0];
-                float cy = sample.y - mag_bias[1];
-                float cz = sample.z - mag_bias[2];
-
-                /* Apply soft-iron scaling */
-                cx *= mag_scale[0];
-                cy *= mag_scale[1];
-                cz *= mag_scale[2];
-
-                /* Calculate radius */
-                float radius = std::sqrt(cx*cx + cy*cy + cz*cz);
-                sumRadius += radius;
-                minRadius = std::min(minRadius, radius);
-                maxRadius = std::max(maxRadius, radius);
-            }
-
-            float avgRadius = sumRadius / static_cast<float>(samples.size());
-            float radiusVariance = maxRadius - minRadius;
-
-            LOG_INFO("Magnetometer verification statistics:");
-            LOG_INFO("  Average radius: " + std::to_string(avgRadius) + " µT");
-            LOG_INFO("  Min radius: " + std::to_string(minRadius) + " µT");
-            LOG_INFO("  Max radius: " + std::to_string(maxRadius) + " µT");
-            LOG_INFO("  Variance: " + std::to_string(radiusVariance) + " µT");
-
-            /* Verification passes if variance is below threshold */
-            return radiusVariance < VARIANCE_THRESHOLD;
+            return retVal;
         }
 
     } /* namespace Sensors */

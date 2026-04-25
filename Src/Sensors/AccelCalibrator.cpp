@@ -7,16 +7,20 @@
 
 #include <EdgeSense/Sensors/AccelCalibrator.h>
 #include <EdgeSense/Sensors/SensorsRegistry.h>
+#include <EdgeSense/Logger/Logger.h>
 #include <iostream>
 #include <iomanip>
 #include <cmath>
+#include <sstream>
 #include <sys/select.h>
 #include <unistd.h>
+
+using namespace EdgeSense::Logger;
 
 namespace EdgeSense {
     namespace Sensors {
 
-        AccelCalibrator::AccelCalibrator() 
+        AccelCalibrator::AccelCalibrator()
             : state(AccelState::IDLE), currentPosition(0) {
         }
 
@@ -29,145 +33,144 @@ namespace EdgeSense {
             validationAttempts = 0;
             captureStarted = false;
 
-            std::cout << "\n✓ STEP 1 accepted. Accelerometer calibration initialized.\n";
-            std::cout << "[ACCEL] Total samples needed: " << targetSampleCount << "\n\n" << std::flush;
+            LOG_INFO("STEP 1 accepted. Accelerometer calibration initialized.");
+            LOG_INFO("[ACCEL] Total samples needed: " + std::to_string(targetSampleCount));
             promptPosition();
             return true;
         }
 
         bool AccelCalibrator::processCalibration() {
+            bool retVal = true;
             if (state == AccelState::IDLE || state == AccelState::COMPLETE || state == AccelState::ERROR) {
-                return false;
-            }
+                retVal = false;
+            } else {
+                auto& registry = SensorsRegistry::getInstance();
 
-            auto& registry = SensorsRegistry::getInstance();
+                switch (state) {
+                    case AccelState::INIT_PROMPT:
+                        state = AccelState::WAIT_POSITION_1;
+                        break;
 
-            switch (state) {
-                case AccelState::INIT_PROMPT:
-                    state = AccelState::WAIT_POSITION_1;
-                    break;
-
-                case AccelState::WAIT_POSITION_1:
-                case AccelState::WAIT_POSITION_2:
-                case AccelState::WAIT_POSITION_3:
-                case AccelState::WAIT_POSITION_4:
-                case AccelState::WAIT_POSITION_5:
-                case AccelState::WAIT_POSITION_6: {
-                    /* Show live sensor values each cycle so the user can align the board */
-                    auto liveSamples = registry.getAccelRawBuffer().getLatest(1);
-                    if (!liveSamples.empty()) {
-                        displayLiveValues(liveSamples[0]);
+                    case AccelState::WAIT_POSITION_1:
+                    case AccelState::WAIT_POSITION_2:
+                    case AccelState::WAIT_POSITION_3:
+                    case AccelState::WAIT_POSITION_4:
+                    case AccelState::WAIT_POSITION_5:
+                    case AccelState::WAIT_POSITION_6: {
+                        /* Show live sensor values each cycle so the user can align the board */
+                        auto liveSamples = registry.getAccelRawBuffer().getLatest(1);
+                        if (!liveSamples.empty()) {
+                            displayLiveValues(liveSamples[0]);
+                        }
+                        /* Transition to capture only when user confirms with ENTER */
+                        if (isEnterPressed()) {
+                            std::cout << "\n";
+                            state = static_cast<AccelState>(static_cast<int>(state) + 1);
+                            captureStarted = false;
+                        }
+                        break;
                     }
-                    /* Transition to capture only when user confirms with ENTER */
-                    if (isEnterPressed()) {
-                        std::cout << "\n";
-                        state = static_cast<AccelState>(static_cast<int>(state) + 1);
-                        captureStarted = false;
-                    }
-                    break;
-                }
 
-                case AccelState::CAPTURE_POSITION_1:
-                case AccelState::CAPTURE_POSITION_2:
-                case AccelState::CAPTURE_POSITION_3:
-                case AccelState::CAPTURE_POSITION_4:
-                case AccelState::CAPTURE_POSITION_5:
-                case AccelState::CAPTURE_POSITION_6: {
-                    /* Collect samples from registry */
-                    auto latestSamples = registry.getAccelRawBuffer().getLatest(1);
-                    if (!latestSamples.empty()) {
-                        Vector3 reading = latestSamples[0];
-                        std::cout << std::fixed << std::setprecision(2);
-                        std::cout << "\r[ACCEL] Capturing Position " << (currentPosition + 1) << ": ("
-                            << reading.x << ", " << reading.y << ", " << reading.z << ")   " << std::flush;
+                    case AccelState::CAPTURE_POSITION_1:
+                    case AccelState::CAPTURE_POSITION_2:
+                    case AccelState::CAPTURE_POSITION_3:
+                    case AccelState::CAPTURE_POSITION_4:
+                    case AccelState::CAPTURE_POSITION_5:
+                    case AccelState::CAPTURE_POSITION_6: {
+                        /* Collect samples from registry */
+                        auto latestSamples = registry.getAccelRawBuffer().getLatest(1);
+                        if (!latestSamples.empty()) {
+                            Vector3 reading = latestSamples[0];
 
-                        /* Validate position for first few samples (50 samples = ~0.5 sec) */
-                        int positionSampleCount = collectedSamples % SAMPLES_PER_POSITION;
-                        if (positionSampleCount < 50) {
-                            if (!validatePosition(reading)) {
-                                /* Position invalid - prompt user once per detection event */
-                                if (validationAttempts == 0) {
-                                    validationAttempts++;
-                                    std::cout << "\n[ACCEL] WARNING: Position " << (currentPosition + 1)
-                                        << " appears incorrect. Verify device orientation.\n" << std::flush;
-                                    provideOrientationGuidance(reading);
+                            /* Validate position for first few samples (50 samples = ~0.5 sec) */
+                            int positionSampleCount = collectedSamples % SAMPLES_PER_POSITION;
+                            if (positionSampleCount < 50) {
+                                if (!validatePosition(reading)) {
+                                    /* Position invalid — prompt user once per detection event */
+                                    if (validationAttempts == 0) {
+                                        validationAttempts++;
+                                        LOG_WARN("[ACCEL] WARNING: Position " + std::to_string(currentPosition + 1)
+                                            + " appears incorrect. Verify device orientation.");
+                                        provideOrientationGuidance(reading);
 
-                                    if (!promptRetryOrAbort()) {
-                                        std::cout << "[ACCEL] Calibration aborted by user.\n" << std::flush;
-                                        state = AccelState::ERROR;
-                                        return false;
+                                        if (!promptRetryOrAbort()) {
+                                            LOG_WARN("[ACCEL] Calibration aborted by user.");
+                                            state = AccelState::ERROR;
+                                        } else {
+                                            /* Discard any samples collected for this position */
+                                            int positionStart = currentPosition * SAMPLES_PER_POSITION;
+                                            samples.resize(static_cast<size_t>(positionStart));
+                                            collectedSamples = positionStart;
+                                            captureStarted = false;
+                                            validationAttempts = 0;
+                                            /* Return to WAIT state so user can reposition before next capture */
+                                            state = static_cast<AccelState>(
+                                                static_cast<int>(AccelState::WAIT_POSITION_1) + currentPosition * 2
+                                            );
+                                            promptPosition();
+                                        }
                                     }
-                                    /* Discard any samples collected for this position */
-                                    int positionStart = currentPosition * SAMPLES_PER_POSITION;
-                                    samples.resize(static_cast<size_t>(positionStart));
-                                    collectedSamples = positionStart;
-                                    captureStarted = false;
+                                    /* Skip this sample */
+                                } else {
+                                    /* Valid position — print "Position OK" message first time only */
+                                    if (!captureStarted) {
+                                        LOG_INFO("[ACCEL] Position " + std::to_string(currentPosition + 1)
+                                            + " OK - Starting capture (" + std::to_string(SAMPLES_PER_POSITION) + " samples)...");
+                                        captureStarted = true;
+                                    }
                                     validationAttempts = 0;
-                                    /* Return to WAIT state so user can reposition before next capture */
-                                    state = static_cast<AccelState>(
-                                        static_cast<int>(AccelState::WAIT_POSITION_1) + currentPosition * 2
-                                    );
-                                    promptPosition();
+                                    samples.push_back(reading);
+                                    collectedSamples++;
                                 }
-                                /* Skip this sample */
-                                break;
                             } else {
-                                /* Valid position - print "Position OK" message first time only */
-                                if (!captureStarted) {
-                                    std::cout << "\n[ACCEL] ✓ Position " << (currentPosition + 1)
-                                        << " OK - Starting capture (" << SAMPLES_PER_POSITION << " samples)...\n" << std::flush;
-                                    captureStarted = true;
-                                }
-                                validationAttempts = 0;
+                                samples.push_back(reading);
+                                collectedSamples++;
+                            }
+
+                            /* Show progress every 25 samples */
+                            int positionProgress = collectedSamples % SAMPLES_PER_POSITION;
+                            if (positionProgress > 0 && positionProgress % 25 == 0) {
+                                LOG_INFO("[ACCEL] Position " + std::to_string(currentPosition + 1)
+                                    + ": " + std::to_string(positionProgress) + "/" + std::to_string(SAMPLES_PER_POSITION) + " samples");
                             }
                         }
 
-                        samples.push_back(reading);
-                        collectedSamples++;
-                        
-                        /* Show progress every 25 samples */
-                        int positionProgress = collectedSamples % SAMPLES_PER_POSITION;
-                        if (positionProgress > 0 && positionProgress % 25 == 0) {
-                            std::cout << "  " << positionProgress << "/" << SAMPLES_PER_POSITION 
-                                << " samples\n" << std::flush;
+                        /* Check if we have enough samples for this position */
+                        if (collectedSamples % SAMPLES_PER_POSITION == 0 && collectedSamples > 0) {
+                            LOG_INFO("[ACCEL] Position " + std::to_string(currentPosition + 1) + " capture done.");
+                            currentPosition++;
+                            if (currentPosition < 6) {
+                                /* Move to next position */
+                                state = static_cast<AccelState>(static_cast<int>(AccelState::WAIT_POSITION_1) + (currentPosition * 2));
+                                validationAttempts = 0;
+                                promptPosition();
+                            } else {
+                                /* All positions captured — process */
+                                LOG_INFO("[ACCEL] All 6 positions captured. Processing offsets...");
+                                state = AccelState::PROCESSING;
+                                computeOffsets();
+                            }
                         }
+                        break;
                     }
 
-                    /* Check if we have enough samples for this position */
-                    if (collectedSamples % SAMPLES_PER_POSITION == 0) {
-                        std::cout << "[ACCEL] Position " << (currentPosition + 1) << " capture done.\n"<< std::flush;
-                        currentPosition++;
-                        if (currentPosition < 6) {
-                            /* Move to next position */
-                            state = static_cast<AccelState>(static_cast<int>(AccelState::WAIT_POSITION_1) + (currentPosition * 2));
-                            validationAttempts = 0;  /* Reset for new position */
-                            promptPosition();
+                    case AccelState::PROCESSING:
+                        state = AccelState::VERIFY;
+                        if (verifyCalibration()) {
+                            state = AccelState::COMPLETE;
+                            LOG_INFO("[ACCEL] Calibration COMPLETE");
                         } else {
-                            /* All positions captured - process */
-                            std::cout << "\n[ACCEL] All 6 positions captured. Processing offsets...\n" << std::flush;
-                            state = AccelState::PROCESSING;
-                            computeOffsets();
+                            LOG_WARN("[ACCEL] Verification failed - offsets may be incorrect");
+                            state = AccelState::ERROR;
                         }
-                    }
-                    break;
+                        break;
+
+                    default:
+                        break;
                 }
-
-                case AccelState::PROCESSING:
-                    state = AccelState::VERIFY;
-                    if (verifyCalibration()) {
-                        state = AccelState::COMPLETE;
-                        std::cout << "\n[ACCEL] ✓✓✓ Calibration COMPLETE ✓✓✓\n" << std::flush;
-                    } else {
-                        std::cout << "\n[ACCEL] ✗ Verification failed - offsets may be incorrect\n" << std::flush;
-                        state = AccelState::ERROR;
-                    }
-                    break;
-
-                default:
-                    break;
             }
 
-            return true;
+            return retVal;
         }
 
         bool AccelCalibrator::isComplete() const {
@@ -222,91 +225,91 @@ namespace EdgeSense {
         }
 
         void AccelCalibrator::computeOffsets() {
-            if (static_cast<int>(samples.size()) < SAMPLES_PER_POSITION * 6) {
-                std::cout << "[ACCEL] ERROR: Insufficient samples (" << samples.size() << "/" 
-                    << (SAMPLES_PER_POSITION * 6) << ")\n" << std::flush;
-                return;
-            }
+            if (static_cast<int>(samples.size()) >= SAMPLES_PER_POSITION * 6) {
+                /* Calculate average for each position */
+                Vector3 positionAverages[6];
 
-            /* Calculate average for each position */
-            Vector3 positionAverages[6];
+                for (int pos = 0; pos < 6; ++pos) {
+                    Vector3 sum = {0, 0, 0};
+                    int startIdx = pos * SAMPLES_PER_POSITION;
+                    int endIdx = startIdx + SAMPLES_PER_POSITION;
 
-            for (int pos = 0; pos < 6; ++pos) {
-                Vector3 sum = {0, 0, 0};
-                int startIdx = pos * SAMPLES_PER_POSITION;
-                int endIdx = startIdx + SAMPLES_PER_POSITION;
+                    for (int i = startIdx; i < endIdx && i < static_cast<int>(samples.size()); ++i) {
+                        sum.x += samples[i].x;
+                        sum.y += samples[i].y;
+                        sum.z += samples[i].z;
+                    }
 
-                for (int i = startIdx; i < endIdx && i < static_cast<int>(samples.size()); ++i) {
-                    sum.x += samples[i].x;
-                    sum.y += samples[i].y;
-                    sum.z += samples[i].z;
+                    positionAverages[pos].x = sum.x / SAMPLES_PER_POSITION;
+                    positionAverages[pos].y = sum.y / SAMPLES_PER_POSITION;
+                    positionAverages[pos].z = sum.z / SAMPLES_PER_POSITION;
+
+                    std::ostringstream oss;
+                    oss << "  Pos " << (pos + 1) << " avg: ("
+                        << std::setprecision(2) << std::fixed
+                        << positionAverages[pos].x << ", "
+                        << positionAverages[pos].y << ", "
+                        << positionAverages[pos].z << ")";
+                    LOG_INFO(oss.str());
                 }
 
-                positionAverages[pos].x = sum.x / SAMPLES_PER_POSITION;
-                positionAverages[pos].y = sum.y / SAMPLES_PER_POSITION;
-                positionAverages[pos].z = sum.z / SAMPLES_PER_POSITION;
+                /* Calculate bias (offset from zero)
+                 * Expected values at each position (gravity = 9.81 m/s^2):
+                 * Pos 0 (Z+): ax=0, ay=0, az=+9.81
+                 * Pos 1 (Z-): ax=0, ay=0, az=-9.81
+                 * Pos 2 (X+): ax=+9.81, ay=0, az=0
+                 * Pos 3 (X-): ax=-9.81, ay=0, az=0
+                 * Pos 4 (Y+): ax=0, ay=+9.81, az=0
+                 * Pos 5 (Y-): ax=0, ay=-9.81, az=0
+                 */
+                accel_bias[0] = (positionAverages[2].x + positionAverages[3].x) / 2.0f;
+                accel_bias[1] = (positionAverages[4].y + positionAverages[5].y) / 2.0f;
+                accel_bias[2] = (positionAverages[0].z + positionAverages[1].z) / 2.0f;
 
-                std::cout << "  Pos " << (pos + 1) << " avg: ("
-                    << std::setprecision(2) << std::fixed
-                    << positionAverages[pos].x << ", "
-                    << positionAverages[pos].y << ", "
-                    << positionAverages[pos].z << ")\n";
+                /* Calculate scale factors */
+                const float GRAVITY = 9.81f;
+                accel_scale[0] = GRAVITY / (std::abs(positionAverages[2].x - accel_bias[0]) +
+                                           std::abs(positionAverages[3].x - accel_bias[0])) * 2.0f;
+                accel_scale[1] = GRAVITY / (std::abs(positionAverages[4].y - accel_bias[1]) +
+                                           std::abs(positionAverages[5].y - accel_bias[1])) * 2.0f;
+                accel_scale[2] = GRAVITY / (std::abs(positionAverages[0].z - accel_bias[2]) +
+                                           std::abs(positionAverages[1].z - accel_bias[2])) * 2.0f;
+
+                std::ostringstream oss;
+                oss << std::setprecision(4) << std::fixed
+                    << "[ACCEL] Offsets computed:"
+                    << "  Bias (m/s2): [" << accel_bias[0] << ", " << accel_bias[1] << ", " << accel_bias[2] << "]"
+                    << "  Scale: [" << accel_scale[0] << ", " << accel_scale[1] << ", " << accel_scale[2] << "]";
+                LOG_INFO(oss.str());
+            } else {
+                LOG_ERROR("[ACCEL] Insufficient samples (" + std::to_string(samples.size()) + "/"
+                    + std::to_string(SAMPLES_PER_POSITION * 6) + ")");
             }
-
-            /* Compute bias from position averages
-             * Expected values at each position (assuming gravity = 9.81 m/s^2):
-             * Pos 0 (Z+): ax=0, ay=0, az=+9.81
-             * Pos 1 (Z-): ax=0, ay=0, az=-9.81
-             * Pos 2 (X+): ax=+9.81, ay=0, az=0
-             * Pos 3 (X-): ax=-9.81, ay=0, az=0
-             * Pos 4 (Y+): ax=0, ay=+9.81, az=0
-             * Pos 5 (Y-): ax=0, ay=-9.81, az=0
-             */
-
-            /* Calculate bias (offset from zero) */
-            accel_bias[0] = (positionAverages[2].x + positionAverages[3].x) / 2.0f;
-            accel_bias[1] = (positionAverages[4].y + positionAverages[5].y) / 2.0f;
-            accel_bias[2] = (positionAverages[0].z + positionAverages[1].z) / 2.0f;
-
-            /* Calculate scale factors */
-            const float GRAVITY = 9.81f;
-            accel_scale[0] = GRAVITY / (std::abs(positionAverages[2].x - accel_bias[0]) + 
-                                       std::abs(positionAverages[3].x - accel_bias[0])) * 2.0f;
-            accel_scale[1] = GRAVITY / (std::abs(positionAverages[4].y - accel_bias[1]) + 
-                                       std::abs(positionAverages[5].y - accel_bias[1])) * 2.0f;
-            accel_scale[2] = GRAVITY / (std::abs(positionAverages[0].z - accel_bias[2]) + 
-                                       std::abs(positionAverages[1].z - accel_bias[2])) * 2.0f;
-
-            std::cout << "[ACCEL] Offsets computed:\n";
-            std::cout << "  Bias (m/s²):  [" << std::setprecision(4) << std::fixed
-                << accel_bias[0] << ", " << accel_bias[1] << ", " << accel_bias[2] << "]\n";
-            std::cout << "  Scale factors: [" << accel_scale[0] << ", "
-                << accel_scale[1] << ", " << accel_scale[2] << "]\n";
         }
 
         bool AccelCalibrator::verifyCalibration() {
             /* Verify that corrected values at each position approach expected gravity */
             bool validCalibration = true;
             const float GRAVITY = 9.81f;
-            const float TOLERANCE = 0.5f;  /* Allow ±0.5 m/s^2 */
+            const float TOLERANCE = 0.5f;  /* Allow +-0.5 m/s^2 */
 
             for (int pos = 0; pos < 6; ++pos) {
                 int idx = pos * SAMPLES_PER_POSITION;
-                if (idx >= static_cast<int>(samples.size())) continue;
+                if (idx < static_cast<int>(samples.size())) {
+                    /* Apply calibration to this sample */
+                    float ax = (samples[idx].x - accel_bias[0]) * accel_scale[0];
+                    float ay = (samples[idx].y - accel_bias[1]) * accel_scale[1];
+                    float az = (samples[idx].z - accel_bias[2]) * accel_scale[2];
 
-                /* Apply calibration to this sample */
-                float ax = (samples[idx].x - accel_bias[0]) * accel_scale[0];
-                float ay = (samples[idx].y - accel_bias[1]) * accel_scale[1];
-                float az = (samples[idx].z - accel_bias[2]) * accel_scale[2];
+                    /* Calculate magnitude */
+                    float magnitude = std::sqrt(ax*ax + ay*ay + az*az);
 
-                /* Calculate magnitude */
-                float magnitude = std::sqrt(ax*ax + ay*ay + az*az);
-
-                /* Check if magnitude is close to gravity */
-                if (std::abs(magnitude - GRAVITY) > TOLERANCE) {
-                    std::cout << "[ACCEL] Position " << (pos + 1) << " magnitude " 
-                        << magnitude << " outside tolerance\n" << std::flush;
-                    validCalibration = false;
+                    /* Check if magnitude is close to gravity */
+                    if (std::abs(magnitude - GRAVITY) > TOLERANCE) {
+                        LOG_WARN("[ACCEL] Position " + std::to_string(pos + 1) + " magnitude "
+                            + std::to_string(magnitude) + " outside tolerance");
+                        validCalibration = false;
+                    }
                 }
             }
 
@@ -315,11 +318,11 @@ namespace EdgeSense {
 
         bool AccelCalibrator::validatePosition(const Vector3& reading) {
             /* Determine expected axis and direction for current position */
-            int expectedAxis = currentPosition / 2;  /* 0=Z, 1=X, 2=Y */
-            bool expectedPositive = (currentPosition % 2) == 0;  /* 0,2,4 are positive; 1,3,5 are negative */
+            int expectedAxis = currentPosition / 2;       /* 0=Z, 1=X, 2=Y */
+            bool expectedPositive = (currentPosition % 2) == 0; /* 0,2,4 are positive; 1,3,5 are negative */
 
             float expectedValue = 0.0f;
-            
+
             /* Get the value on the expected axis */
             if (expectedAxis == 0) {
                 expectedValue = reading.z;
@@ -329,19 +332,10 @@ namespace EdgeSense {
                 expectedValue = reading.y;
             }
 
-            /* Check if direction matches expected */
-            bool isPositive = expectedValue > 0.0f;
-            if (isPositive != expectedPositive) {
-                return false;  /* Wrong direction for this axis */
-            }
-
-            /* Check if magnitude is strong enough to indicate gravity alignment */
-            /* At least ORIENTATION_THRESHOLD (in g units) on expected axis means good alignment (1.0g = 9.81 m/s^2) */
-            if (std::abs(expectedValue) < ORIENTATION_THRESHOLD) {
-                return false;  /* Not enough gravity on expected axis */
-            }
-
-            return true;  /* Position is acceptable */
+            /* Check direction and magnitude in a single expression */
+            bool retVal = ((expectedValue > 0.0f) == expectedPositive)
+                       && (std::abs(expectedValue) >= ORIENTATION_THRESHOLD);
+            return retVal;
         }
 
         void AccelCalibrator::displayLiveValues(const Vector3& reading) {
@@ -402,11 +396,11 @@ namespace EdgeSense {
         }
 
         void AccelCalibrator::provideOrientationGuidance(const Vector3& reading) {
-            int expectedAxis = currentPosition / 2;  /* 0=Z, 1=X, 2=Y */
+            int expectedAxis = currentPosition / 2;       /* 0=Z, 1=X, 2=Y */
             bool expectedPositive = (currentPosition % 2) == 0;
 
             float expectedValue = 0.0f;
-            
+
             if (expectedAxis == 0) {
                 expectedValue = reading.z;
             } else if (expectedAxis == 1) {
@@ -426,9 +420,9 @@ namespace EdgeSense {
             std::cout << "ORIENTATION GUIDANCE\n";
 
             if (std::abs(expectedValue) < ORIENTATION_THRESHOLD) {
-                std::cout << axisNames[expectedAxis] << "-axis gravity reading is too weak (" 
+                std::cout << axisNames[expectedAxis] << "-axis gravity reading is too weak ("
                     << std::abs(expectedValue) << " g).\n";
-                std::cout << "Rotate device more to align " << axisNames[expectedAxis] 
+                std::cout << "Rotate device more to align " << axisNames[expectedAxis]
                     << "-axis with gravity.\n";
             }
 

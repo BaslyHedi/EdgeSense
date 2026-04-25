@@ -24,5 +24,5 @@ namespace EdgeSense {
             float temp;
             float pressure;
         };
-    } // namespace Sensors
-} // namespace EdgeSense
+    } /* namespace Sensors */
+} /* namespace EdgeSense */

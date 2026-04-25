@@ -250,16 +250,12 @@ namespace EdgeSense {
         }
 
         bool CalibrationEngine::loadExistingCalibration() {
-            if (!dataStore->exists("")) {
-                return false;
+            bool retVal = false;
+            if (dataStore->exists("") && dataStore->load(calibData, "")) {
+                LOG_INFO("Existing calibration loaded from disk (Session ID: " + std::to_string(calibData.session_id) + ")");
+                retVal = true;
             }
-
-            if (!dataStore->load(calibData, "")) {
-                return false;
-            }
-
-            LOG_INFO("Existing calibration loaded from disk (Session ID: " + std::to_string(calibData.session_id) + ")");
-            return true;
+            return retVal;
         }
 
         std::string CalibrationEngine::getCurrentSensorCalibrating() const {

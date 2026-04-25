@@ -41,40 +41,41 @@ namespace EdgeSense {
         }
 
         bool PressureTempCalibrator::processCalibration() {
+            bool retVal = true;
             if (calibrationDone) {
-                return false;
+                retVal = false;
+            } else {
+                auto& registry = SensorsRegistry::getInstance();
+
+                /* Collect pressure samples */
+                auto pressureSamples = registry.getPressure().getLatest(1);
+                if (!pressureSamples.empty()) {
+                    baseline_press += pressureSamples[0];
+                }
+
+                /* Collect temperature samples */
+                auto tempSamples = registry.getTemperature().getLatest(1);
+                if (!tempSamples.empty()) {
+                    baseline_temperature += tempSamples[0];
+                }
+
+                collectedSamples++;
+
+                /* Check if we have enough samples */
+                if (collectedSamples >= BASELINE_SAMPLES) {
+                    /* Calculate averages */
+                    baseline_press /= BASELINE_SAMPLES;
+                    baseline_temperature /= BASELINE_SAMPLES;
+
+                    LOG_INFO("Pressure/Temperature baseline captured:");
+                    LOG_INFO("  Baseline Pressure: " + std::to_string(baseline_press) + " hPa");
+                    LOG_INFO("  Baseline Temperature: " + std::to_string(baseline_temperature) + " C");
+
+                    calibrationDone = true;
+                }
             }
 
-            auto& registry = SensorsRegistry::getInstance();
-
-            /* Collect pressure samples */
-            auto pressureSamples = registry.getPressure().getLatest(1);
-            if (!pressureSamples.empty()) {
-                baseline_press += pressureSamples[0];
-            }
-
-            /* Collect temperature samples */
-            auto tempSamples = registry.getTemperature().getLatest(1);
-            if (!tempSamples.empty()) {
-                baseline_temperature += tempSamples[0];
-            }
-
-            collectedSamples++;
-
-            /* Check if we have enough samples */
-            if (collectedSamples >= BASELINE_SAMPLES) {
-                /* Calculate averages */
-                baseline_press /= BASELINE_SAMPLES;
-                baseline_temperature /= BASELINE_SAMPLES;
-
-                LOG_INFO("Pressure/Temperature baseline captured:");
-                LOG_INFO("  Baseline Pressure: " + std::to_string(baseline_press) + " hPa");
-                LOG_INFO("  Baseline Temperature: " + std::to_string(baseline_temperature) + " C");
-
-                calibrationDone = true;
-            }
-
-            return true;
+            return retVal;
         }
 
         bool PressureTempCalibrator::isComplete() const {

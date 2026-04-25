@@ -24,7 +24,7 @@ namespace EdgeSense {
             bool configresVal = true;
             bool retVal = true;
             
-            // 1. Verify WHO_AM_I (Register 0x0F)
+            /* 1. Verify WHO_AM_I (Register 0x0F) */
             if (!i2cBus.readByte(address, 0x0F, id) || id != 0x3D) {
                 LOG_ERROR(name + ": ID Mismatch. Expected 0x3D, got 0x" + std::to_string(id));
                 retVal = false;

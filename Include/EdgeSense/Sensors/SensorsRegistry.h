@@ -16,13 +16,13 @@ namespace EdgeSense {
 
     class SensorsRegistry {
         public:
-            // Access the single instance (Singleton Pattern)
+            /* Access the single instance (Singleton Pattern) */
             static SensorsRegistry& getInstance() {
                 static SensorsRegistry instance;
                 return instance;
             }
 
-            // --- Raw Data Buffers (For 1ms -> 5ms Pipeline) ---
+            /* --- Raw Data Buffers (For 1ms -> 5ms Pipeline) --- */
             Utils::CircularBuffer<Vector3, 50>& getAccelRawBuffer()    { return accelRawBuffer; }
             Utils::CircularBuffer<Vector3, 50>& getGyroRawBuffer()      { return gyroRawBuffer; }
             Utils::CircularBuffer<Vector3, 50>& getMagRawBuffer()       { return magnetoRawBuffer; }
@@ -30,7 +30,7 @@ namespace EdgeSense {
             Utils::CircularBuffer<float, 50>& getTemperature() { return tempBuffer; }
             Utils::CircularBuffer<float, 50>& getPressure() { return pressBuffer; }
 
-            // --- Filtered Data (Thread-Safe "Snapshots" for 10ms+ UI/Math) ---
+            /* --- Filtered Data (Thread-Safe "Snapshots" for 10ms+ UI/Math) --- */
             /* Accelerometer data */
             void updateFilteredImuAccel(float accex, float accey, float accez);
             void getFilteredImuAccel(float& accex, float& accey, float& accez);
@@ -47,7 +47,7 @@ namespace EdgeSense {
             void getFilteredEnv(float& press, float& temp);
 
         private:
-            SensorsRegistry() = default; // Private constructor for Singleton
+            SensorsRegistry() = default; /* Private constructor for Singleton */
 
             /* Buffers for orientation high-speed raw data */
             Utils::CircularBuffer<Vector3, 50> accelRawBuffer;
@@ -58,11 +58,11 @@ namespace EdgeSense {
             Utils::CircularBuffer<float, 50> tempBuffer;
             Utils::CircularBuffer<float, 50> pressBuffer;
 
-            // Mutex-protected "Last Known Good" values for the UI/Fusion layers
+            /* Mutex-protected "Last Known Good" values for the UI/Fusion layers */
             std::mutex dataMutex;
             float f_accex, f_accey, f_accez, f_gyrox, f_gyroy, f_gyroz, f_magx, f_magy, f_magz;
             float f_pressure, f_temp;
         };
 
-    } // namespace Sensors
-} // namespace EdgeSense
+    } /* namespace Sensors */
+} /* namespace EdgeSense */

@@ -30,13 +30,14 @@ namespace EdgeSense {
         }
 
         bool CalibDataStore::ensureCalibDirExists() {
+            bool retVal = true;
             try {
                 std::filesystem::create_directories(CALIB_DIR);
-                return true;
             } catch (const std::exception& e) {
                 LOG_ERROR("Failed to create calibration directory: " + std::string(e.what()));
-                return false;
+                retVal = false;
             }
+            return retVal;
         }
 
         uint32_t CalibDataStore::generateSessionId() {
@@ -59,52 +60,50 @@ namespace EdgeSense {
 
         bool CalibDataStore::save(const FullCalibration& calib, const std::string& filename) {
             std::string filePath = getEffectiveFilename(filename, true);
+            bool retVal = false;
 
             std::ofstream outFile(filePath, std::ios::binary);
             if (!outFile.is_open()) {
                 LOG_ERROR("Failed to open calibration file for writing: " + filePath);
-                return false;
-            }
+            } else {
+                /* Write the entire FullCalibration structure as binary */
+                outFile.write(reinterpret_cast<const char*>(&calib), sizeof(FullCalibration));
 
-            /* Write the entire FullCalibration structure as binary */
-            outFile.write(reinterpret_cast<const char*>(&calib), sizeof(FullCalibration));
-            
-            if (!outFile.good()) {
-                LOG_ERROR("Failed to write calibration data to file: " + filePath);
+                if (!outFile.good()) {
+                    LOG_ERROR("Failed to write calibration data to file: " + filePath);
+                } else {
+                    LOG_INFO("Calibration data saved to " + filePath + " (Session ID: " + std::to_string(calib.session_id) + ")");
+                    /* Also export to JSON for human verification */
+                    exportToJson(calib, "");
+                    retVal = true;
+                }
                 outFile.close();
-                return false;
             }
 
-            outFile.close();
-            LOG_INFO("Calibration data saved to " + filePath + " (Session ID: " + std::to_string(calib.session_id) + ")");
-            
-            /* Also export to JSON for human verification */
-            exportToJson(calib, "");
-            
-            return true;
+            return retVal;
         }
 
         bool CalibDataStore::load(FullCalibration& calib, const std::string& filename) {
             std::string filePath = getEffectiveFilename(filename, true);
+            bool retVal = false;
 
             std::ifstream inFile(filePath, std::ios::binary);
             if (!inFile.is_open()) {
                 LOG_WARN("Calibration file not found: " + filePath + ". Using defaults.");
-                return false;
-            }
+            } else {
+                /* Read the entire FullCalibration structure */
+                inFile.read(reinterpret_cast<char*>(&calib), sizeof(FullCalibration));
 
-            /* Read the entire FullCalibration structure */
-            inFile.read(reinterpret_cast<char*>(&calib), sizeof(FullCalibration));
-            
-            if (!inFile.good()) {
-                LOG_ERROR("Failed to read calibration data from file: " + filePath);
+                if (!inFile.good()) {
+                    LOG_ERROR("Failed to read calibration data from file: " + filePath);
+                } else {
+                    LOG_INFO("Calibration data loaded from " + filePath + " (Session ID: " + std::to_string(calib.session_id) + ")");
+                    retVal = true;
+                }
                 inFile.close();
-                return false;
             }
 
-            inFile.close();
-            LOG_INFO("Calibration data loaded from " + filePath + " (Session ID: " + std::to_string(calib.session_id) + ")");
-            return true;
+            return retVal;
         }
 
         bool CalibDataStore::exists(const std::string& filename) const {
@@ -114,62 +113,62 @@ namespace EdgeSense {
 
         bool CalibDataStore::exportToJson(const FullCalibration& calib, const std::string& filename) {
             std::string filePath = getEffectiveFilename(filename, false);
+            bool retVal = false;
 
             std::ofstream outFile(filePath);
             if (!outFile.is_open()) {
                 LOG_ERROR("Failed to open JSON file for writing: " + filePath);
-                return false;
-            }
+            } else {
+                /* Write human-readable JSON format */
+                outFile << "{\n";
+                outFile << "  \"session_id\": " << calib.session_id << ",\n";
+                outFile << "  \"timestamp\": \"" << std::chrono::system_clock::now().time_since_epoch().count() << "\",\n";
 
-            /* Write human-readable JSON format */
-            outFile << "{\n";
-            outFile << "  \"session_id\": " << calib.session_id << ",\n";
-            outFile << "  \"timestamp\": \"" << std::chrono::system_clock::now().time_since_epoch().count() << "\",\n";
-            
-            outFile << "  \"accelerometer\": {\n";
-            outFile << "    \"bias\": [" << std::fixed << std::setprecision(6) 
-                    << calib.accel_bias[0] << ", " << calib.accel_bias[1] << ", " << calib.accel_bias[2] << "],\n";
-            outFile << "    \"scale\": [" 
-                    << calib.accel_scale[0] << ", " << calib.accel_scale[1] << ", " << calib.accel_scale[2] << "]\n";
-            outFile << "  },\n";
-            
-            outFile << "  \"gyroscope\": {\n";
-            outFile << "    \"bias\": [" 
-                    << calib.gyro_bias[0] << ", " << calib.gyro_bias[1] << ", " << calib.gyro_bias[2] << "]\n";
-            outFile << "  },\n";
-            
-            outFile << "  \"magnetometer\": {\n";
-            outFile << "    \"hard_iron_bias\": [" 
-                    << calib.mag_bias[0] << ", " << calib.mag_bias[1] << ", " << calib.mag_bias[2] << "],\n";
-            outFile << "    \"soft_iron_scale\": [" 
-                    << calib.mag_scale[0] << ", " << calib.mag_scale[1] << ", " << calib.mag_scale[2] << "]\n";
-            outFile << "  },\n";
-            
-            outFile << "  \"environmental\": {\n";
-            outFile << "    \"baseline_pressure_hpa\": " << calib.baseline_pressure << ",\n";
-            outFile << "    \"baseline_temperature_c\": " << calib.baseline_temperature << "\n";
-            outFile << "  }\n";
-            outFile << "}\n";
+                outFile << "  \"accelerometer\": {\n";
+                outFile << "    \"bias\": [" << std::fixed << std::setprecision(6)
+                        << calib.accel_bias[0] << ", " << calib.accel_bias[1] << ", " << calib.accel_bias[2] << "],\n";
+                outFile << "    \"scale\": ["
+                        << calib.accel_scale[0] << ", " << calib.accel_scale[1] << ", " << calib.accel_scale[2] << "]\n";
+                outFile << "  },\n";
 
-            if (!outFile.good()) {
-                LOG_ERROR("Failed to write JSON calibration data: " + filePath);
+                outFile << "  \"gyroscope\": {\n";
+                outFile << "    \"bias\": ["
+                        << calib.gyro_bias[0] << ", " << calib.gyro_bias[1] << ", " << calib.gyro_bias[2] << "]\n";
+                outFile << "  },\n";
+
+                outFile << "  \"magnetometer\": {\n";
+                outFile << "    \"hard_iron_bias\": ["
+                        << calib.mag_bias[0] << ", " << calib.mag_bias[1] << ", " << calib.mag_bias[2] << "],\n";
+                outFile << "    \"soft_iron_scale\": ["
+                        << calib.mag_scale[0] << ", " << calib.mag_scale[1] << ", " << calib.mag_scale[2] << "]\n";
+                outFile << "  },\n";
+
+                outFile << "  \"environmental\": {\n";
+                outFile << "    \"baseline_pressure_hpa\": " << calib.baseline_pressure << ",\n";
+                outFile << "    \"baseline_temperature_c\": " << calib.baseline_temperature << "\n";
+                outFile << "  }\n";
+                outFile << "}\n";
+
+                if (!outFile.good()) {
+                    LOG_ERROR("Failed to write JSON calibration data: " + filePath);
+                } else {
+                    LOG_INFO("Calibration data exported to JSON: " + filePath);
+                    retVal = true;
+                }
                 outFile.close();
-                return false;
             }
 
-            outFile.close();
-            LOG_INFO("Calibration data exported to JSON: " + filePath);
-            return true;
+            return retVal;
         }
 
         bool CalibDataStore::importFromJson(FullCalibration& calib, const std::string& filename) {
             std::string filePath = getEffectiveFilename(filename, false);
+            bool retVal = false;
 
             std::ifstream inFile(filePath);
             if (!inFile.is_open()) {
                 LOG_ERROR("Failed to open JSON file for reading: " + filePath);
-                return false;
-            }
+            } else {
 
             /* Simple JSON value extraction using string parsing */
             std::stringstream buffer;
@@ -268,13 +267,17 @@ namespace EdgeSense {
                 calib.baseline_pressure = extractFloat("\"baseline_pressure_hpa\"");
                 calib.baseline_temperature = extractFloat("\"baseline_temperature_c\"");
 
+                retVal = true;
             } catch (const std::exception& e) {
                 LOG_ERROR("Error parsing JSON calibration file: " + std::string(e.what()));
-                return false;
             }
 
-            LOG_INFO("Calibration data imported from JSON: " + filePath);
-            return true;
+            if (retVal) {
+                LOG_INFO("Calibration data imported from JSON: " + filePath);
+            }
+        }
+
+            return retVal;
         }
 
     } /* namespace Core */

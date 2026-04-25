@@ -36,17 +36,17 @@ namespace EdgeSense {
             Sensor(const std::string& name, uint8_t address, HAL::I2cMaster& bus)
                 : name(name), address(address), i2cBus(bus) {}
 
-            // Interface methods
-            virtual bool initialize() = 0; // Pure virtual: Child MUST implement
-            virtual void update() = 0;     // Pure virtual: Child MUST implement
-            
+            /* Interface methods */
+            virtual bool initialize() = 0; /* Pure virtual: Child MUST implement */
+            virtual void update() = 0;     /* Pure virtual: Child MUST implement */
+
             std::string getName() const { return name; }
             uint8_t getAddress() const { return address; }
 
         protected:
             std::string name;
             uint8_t address;
-            HAL::I2cMaster& i2cBus; // Children use this to talk to hardware
+            HAL::I2cMaster& i2cBus; /* Children use this to talk to hardware */
         };
 
         /**
@@ -56,15 +56,15 @@ namespace EdgeSense {
         public:
             using Sensor::Sensor; 
             
-            virtual float getTemperature() const { return 0.0f; }   // Default if not supported
-            virtual float getPressure() const { return 0.0f; }   // Default if not supported
-            virtual float getHumidity() const { return 0.0f; }   // Default if not supported
+            virtual float getTemperature() const { return 0.0f; }   /* Default if not supported */
+            virtual float getPressure() const { return 0.0f; }       /* Default if not supported */
+            virtual float getHumidity() const { return 0.0f; }       /* Default if not supported */
         };
 
         /**
          * @brief Middle-layer for Motion Data
          */
-        // Simple structure for 3D data (IMU)
+        /* Simple structure for 3D data (IMU) */
         struct Vector3 {
             float x = 0.0f;
             float y = 0.0f;
@@ -80,5 +80,5 @@ namespace EdgeSense {
             virtual Vector3 getMagnetometer() const { return {0.0f,0.0f,0.0f}; }
         };
 
-    } // namespace Sensors
-} // namespace EdgeSense
+    } /* namespace Sensors */
+} /* namespace EdgeSense */

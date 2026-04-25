@@ -34,7 +34,7 @@ namespace EdgeSense {
      */
     class Logger {
     public:
-        // Delete copy constructor and assignment operator (Singleton rule)
+        /* Delete copy constructor and assignment operator (Singleton rule) */
         Logger(const Logger&) = delete;
         Logger& operator=(const Logger&) = delete;
 
@@ -53,28 +53,27 @@ namespace EdgeSense {
         void stop();
 
     private:
-        Logger();  // Private constructor
-        ~Logger(); // Private destructor
+        Logger();  /* Private constructor */
+        ~Logger(); /* Private destructor */
 
-        void processLogs(); // Worker thread function
-        void rotateLog();   // Log rotation based on file size
+        void processLogs();           /* Worker thread function */
+        void rotateLog();             /* Log rotation based on file size */
         std::string levelToString(LogLevel level);
 
-        // Threading members
+        /* Threading members */
         std::queue<std::string> logQueue;
         std::mutex queueMutex;
         std::condition_variable condVar;
         std::thread workerThread;
         std::atomic<bool> running;
-        
-        // Log file management
+
+        /* Log file management */
         std::ofstream logFile;
         const std::string logPath = "/var/log/EdgeSenseApp.log";
-        const uintmax_t maxSize = 5 * 1024 * 1024; // 5MB Limit
+        const uintmax_t maxSize = 5 * 1024 * 1024; /* 5MB Limit */
     };
 
-    // Shortcut: Macros
-    // These allow you to write LOG_INFO("Hello") instead of the full singleton call.
+    /* Shortcut macros — write LOG_INFO("Hello") instead of the full singleton call */
     #define LOG_INFO(msg) EdgeSense::Logger::Logger::getInstance().log(EdgeSense::Logger::LogLevel::INFO, msg)
     #define LOG_WARN(msg) EdgeSense::Logger::Logger::getInstance().log(EdgeSense::Logger::LogLevel::WARNING, msg)
     #define LOG_ERROR(msg) EdgeSense::Logger::Logger::getInstance().log(EdgeSense::Logger::LogLevel::ERROR, msg)

@@ -60,9 +60,9 @@ namespace EdgeSense {
             }
 
         private:
-            void harvesterWrapper(); /* Handles timing + Jitter + calls injected task */
-            void refinerWrapper();   /* Handles 5ms timing + calls injected task */
-            void processWrapper(); /* Handles 10ms timing + calls injected task */
+            void harvesterWrapper(); /* Handles timing + jitter measurement + calls injected task */
+            void refinerWrapper();   /* Handles 25ms timing + calls injected task */
+            void processWrapper();   /* Handles 50ms timing + calls injected task */
             void WaitUntilNextCycle(struct timespec& next_time, int cycleTimeMs);
             void updateMaxJitter(struct timespec& next_time, std::atomic<long long>& maxJitterNs);
 

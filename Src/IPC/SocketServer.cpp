@@ -9,7 +9,7 @@
 namespace EdgeSense {
 namespace IPC {
 
-// Implementation goes here
+/* Implementation goes here */
 
-} // namespace IPC
-} // namespace EdgeSense
+} /* namespace IPC */
+} /* namespace EdgeSense */

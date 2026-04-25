@@ -33,9 +33,10 @@ namespace EdgeSense {
         }
 
         bool GyroCalibrator::processCalibration() {
+            bool retVal = true;
             if (state == GyroState::IDLE || state == GyroState::COMPLETE || state == GyroState::ERROR) {
-                return false;
-            }
+                retVal = false;
+            } else {
 
             auto& registry = SensorsRegistry::getInstance();
 
@@ -79,9 +80,10 @@ namespace EdgeSense {
 
                 default:
                     break;
+                }
             }
 
-            return true;
+            return retVal;
         }
 
         bool GyroCalibrator::isComplete() const {
@@ -159,8 +161,8 @@ namespace EdgeSense {
 
             for (int i = 0; i < 3; ++i) {
                 if (std::abs(gyro_bias[i]) > MAX_BIAS_THRESHOLD) {
-                    std::cout << "[GYRO] Axis " << i << " bias " << gyro_bias[i] 
-                        << " exceeds threshold\n" << std::flush;
+                    LOG_WARN("[GYRO] Axis " + std::to_string(i) + " bias " + std::to_string(gyro_bias[i])
+                        + " exceeds threshold");
                     validCalibration = false;
                 }
             }
@@ -180,9 +182,8 @@ namespace EdgeSense {
                 varZ /= static_cast<float>(samples.size());
 
                 if (varX > VARIANCE_THRESHOLD || varY > VARIANCE_THRESHOLD || varZ > VARIANCE_THRESHOLD) {
-                    std::cout << "[GYRO] Variance too high - device may not have been still\n";
-                    std::cout << "  Variance (dps^2): [" << varX << ", "
-                        << varY << ", " << varZ << "]\n" << std::flush;
+                    LOG_WARN("[GYRO] Variance too high - device may not have been still. Variance (dps^2): ["
+                        + std::to_string(varX) + ", " + std::to_string(varY) + ", " + std::to_string(varZ) + "]");
                     validCalibration = false;
                 }
             }

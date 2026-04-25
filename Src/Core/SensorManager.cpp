@@ -8,6 +8,7 @@
 #include <EdgeSense/Logger/Logger.h>
 #include <iomanip>
 #include <iostream>
+#include <sstream>
 
 using namespace EdgeSense::Core;
 using namespace EdgeSense::Sensors;
@@ -148,24 +149,17 @@ namespace EdgeSense {
 
         /* Log sensor data at 10Hz (every 100ms) to avoid CPU bloat */
         if (++printDivisor >= 10) {
-            std::cout << std::fixed << std::setprecision(2);
-        
-            /* Dashboard Layout: 
-                [IMU] = Motion 
-                [MAG] = Heading 
-                [ENV] = Atmosphere 
-                [JIT] = OS Health 
-            */
-            std::cout << "\033[2J\033[H"  // Clear screen and home cursor
-                      << "[IMU] Accel: (" << ax << ", " << ay << ", " << az << ")\n"
-                      << "      Gyro:  (" << gx << ", " << gy << ", " << gz << ")\n"
-                      << "[MAG] Mag:   (" << mx << ", " << my << ", " << mz << ")\n"
-                      << "[ENV] Press:  " << press << " hPa,  Temp: " << temp << " C\n"
-                      << "[JIT] H: " << (tm.getMaxJitter(EdgeSense::Core::Tier::HARVESTER) / 1000) << " us, "
-                      << "R: " << (tm.getMaxJitter(EdgeSense::Core::Tier::REFINER) / 1000) << " us, "
-                      << "P: " << (tm.getMaxJitter(EdgeSense::Core::Tier::PROCESS) / 1000) << " us\n"
-                      << std::flush;
-            
+            /* Dashboard: [IMU]=Motion [MAG]=Heading [ENV]=Atmosphere [JIT]=OS Health */
+            std::ostringstream oss;
+            oss << std::fixed << std::setprecision(2)
+                << "[IMU] Accel: (" << ax << ", " << ay << ", " << az << ")"
+                << " | Gyro: (" << gx << ", " << gy << ", " << gz << ")"
+                << " | [MAG] (" << mx << ", " << my << ", " << mz << ")"
+                << " | [ENV] " << press << "hPa " << temp << "C"
+                << " | [JIT] H:" << (tm.getMaxJitter(EdgeSense::Core::Tier::HARVESTER) / 1000)
+                << "us R:" << (tm.getMaxJitter(EdgeSense::Core::Tier::REFINER) / 1000)
+                << "us P:" << (tm.getMaxJitter(EdgeSense::Core::Tier::PROCESS) / 1000) << "us";
+            LOG_INFO(oss.str());
             printDivisor = 0;
         }
     }
@@ -192,7 +186,7 @@ namespace EdgeSense {
 
     void SensorManager::runCalibration() {
         LOG_INFO("Starting calibration mode...");
-        
+
         tm.stop(); /* Ensure clean slate */
         tm.start();
         tm.setExecutionMode(ExecutionMode::CALIB);
@@ -202,22 +196,21 @@ namespace EdgeSense {
         if (!engine.startCalibrationSequence()) {
             LOG_ERROR("Failed to start calibration sequence");
             tm.setExecutionMode(ExecutionMode::APP);
-            return;
+        } else {
+            /* Wait for calibration to complete */
+            while (!engine.isCalibrationComplete()) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            }
+
+            LOG_INFO("Calibration sequence complete");
+
+            /* Save calibration data */
+            engine.saveAllCalibrationData();
+
+            /* Return to application mode */
+            LOG_INFO("Returning to application mode");
+            tm.setExecutionMode(ExecutionMode::APP);
         }
-        
-        /* Wait for calibration to complete */
-        while (!engine.isCalibrationComplete()) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        }
-        
-        LOG_INFO("Calibration sequence complete");
-        
-        /* Save calibration data */
-        engine.saveAllCalibrationData();
-        
-        /* Return to application mode */
-        LOG_INFO("Returning to application mode");
-        tm.setExecutionMode(ExecutionMode::APP);
     }
 
     } /* namespace Core */

@@ -6,10 +6,10 @@
  */
 #include <EdgeSense/HAL/I2cMaster.h>
 #include <EdgeSense/Logger/Logger.h>
-#include <fcntl.h>      // open()
-#include <unistd.h>     // read(), write(), close()
-#include <sys/ioctl.h>  // ioctl()
-#include <linux/i2c-dev.h> // I2C_SLAVE constants
+#include <fcntl.h>      /* open() */
+#include <unistd.h>     /* read(), write(), close() */
+#include <sys/ioctl.h>  /* ioctl() */
+#include <linux/i2c-dev.h> /* I2C_SLAVE constants */
 
 namespace EdgeSense {
 namespace HAL {
@@ -72,14 +72,16 @@ void I2cMaster::closeBus() {
  * @note The ioctl() call may fail if the bus is not open or if the address is invalid
  */
 bool I2cMaster::selectSlave(uint8_t slaveAddr) {
+    bool retVal = true;
     if (currentSlaveAddr != slaveAddr) {
         if (ioctl(fileDescriptor, I2C_SLAVE, slaveAddr) < 0) {
             LOG_ERROR("Failed to select I2C slave address: 0x" + std::to_string(slaveAddr));
-            return false;
+            retVal = false;
+        } else {
+            currentSlaveAddr = slaveAddr;
         }
-        currentSlaveAddr = slaveAddr;
     }
-    return true;
+    return retVal;
 }
 
 /**
