@@ -85,12 +85,12 @@ namespace EdgeSense {
 
             /* Position instructions for user guidance */
             const char* positionInstructions[6] = {
-                "Place device with Z-axis pointing UP (Face Up). Press ENTER to capture.",
-                "Place device with Z-axis pointing DOWN (Face Down). Press ENTER to capture.",
-                "Place device with X-axis pointing RIGHT. Press ENTER to capture.",
-                "Place device with X-axis pointing LEFT. Press ENTER to capture.",
-                "Place device with Y-axis pointing FORWARD. Press ENTER to capture.",
-                "Place device with Y-axis pointing BACKWARD. Press ENTER to capture."
+                "Face UP   (Z+)",
+                "Face DOWN (Z-)",
+                "Right side down (X+)",
+                "Left side down  (X-)",
+                "Front side down (Y+)",
+                "Back side down  (Y-)"
             };
 
             /* State machine logic helpers */
@@ -102,7 +102,6 @@ namespace EdgeSense {
 
             /* Position validation and user guidance */
             bool validatePosition(const Vector3& reading);
-            void provideOrientationGuidance(const Vector3& reading);
             bool promptRetryOrAbort();
             void displayLiveValues(const Vector3& reading);  /* Live X/Y/Z display during WAIT states */
             bool isEnterPressed();                           /* Non-blocking stdin ENTER check */

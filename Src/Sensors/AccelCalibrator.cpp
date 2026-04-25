@@ -33,8 +33,7 @@ namespace EdgeSense {
             validationAttempts = 0;
             captureStarted = false;
 
-            LOG_INFO("STEP 1 accepted. Accelerometer calibration initialized.");
-            LOG_INFO("[ACCEL] Total samples needed: " + std::to_string(targetSampleCount));
+            LOG_INFO("[ACCEL] Calibration started.");
             promptPosition();
             return true;
         }
@@ -89,9 +88,8 @@ namespace EdgeSense {
                                     /* Position invalid — prompt user once per detection event */
                                     if (validationAttempts == 0) {
                                         validationAttempts++;
-                                        LOG_WARN("[ACCEL] WARNING: Position " + std::to_string(currentPosition + 1)
-                                            + " appears incorrect. Verify device orientation.");
-                                        provideOrientationGuidance(reading);
+                                        LOG_WARN("[ACCEL] Position " + std::to_string(currentPosition + 1)
+                                            + " incorrect. Verify orientation.");
 
                                         if (!promptRetryOrAbort()) {
                                             LOG_WARN("[ACCEL] Calibration aborted by user.");
@@ -211,13 +209,8 @@ namespace EdgeSense {
         }
 
         void AccelCalibrator::promptPosition() {
-            std::cout << "\n" << std::string(60, '=') << "\n";
-            std::cout << "STEP 2: Position " << (currentPosition + 1) << " of 6\n";
-            std::cout << std::string(60, '=') << "\n";
-            std::cout << "Instructions: " << positionInstructions[currentPosition] << "\n";
-            std::cout << std::string(60, '-') << "\n";
-            std::cout << "Align the board, watch the live readings below, then press ENTER...\n" << std::flush;
-            /* ENTER is detected non-blocking in the WAIT state to allow live display */
+            LOG_INFO("[ACCEL] Position " + std::to_string(currentPosition + 1)
+                     + "/6: " + positionInstructions[currentPosition]);
         }
 
         void AccelCalibrator::capturePosition() {
@@ -357,7 +350,7 @@ namespace EdgeSense {
             bool  aligned      = alignedValue >= ORIENTATION_THRESHOLD;
 
             /* Build a 10-char bar showing alignment progress toward 1.0g */
-            float  progress    = std::min(alignedValue / 1.0f, 1.0f);
+            float  progress    = std::max(0.0f, std::min(alignedValue, 1.0f));
             int    filled      = static_cast<int>(progress * 10.0f);
             std::string bar(static_cast<size_t>(filled), '#');
             bar += std::string(static_cast<size_t>(10 - filled), '-');
@@ -393,47 +386,6 @@ namespace EdgeSense {
             std::cin.ignore(256, '\n'); /* consume trailing newline so next cin.ignore() blocks correctly */
             retVal = (choice == 'r' || choice == 'R');
             return retVal;
-        }
-
-        void AccelCalibrator::provideOrientationGuidance(const Vector3& reading) {
-            int expectedAxis = currentPosition / 2;       /* 0=Z, 1=X, 2=Y */
-            bool expectedPositive = (currentPosition % 2) == 0;
-
-            float expectedValue = 0.0f;
-
-            if (expectedAxis == 0) {
-                expectedValue = reading.z;
-            } else if (expectedAxis == 1) {
-                expectedValue = reading.x;
-            } else {
-                expectedValue = reading.y;
-            }
-
-            const char* axisNames[] = {"Z", "X", "Y"};
-            const char* positionNames[] = {
-                "Face Up (Z+)", "Face Down (Z-)",
-                "Right Side (X+)", "Left Side (X-)",
-                "Front Side (Y+)", "Back Side (Y-)"
-            };
-
-            std::cout << "\n" << std::string(50, '!') << "\n";
-            std::cout << "ORIENTATION GUIDANCE\n";
-
-            if (std::abs(expectedValue) < ORIENTATION_THRESHOLD) {
-                std::cout << axisNames[expectedAxis] << "-axis gravity reading is too weak ("
-                    << std::abs(expectedValue) << " g).\n";
-                std::cout << "Rotate device more to align " << axisNames[expectedAxis]
-                    << "-axis with gravity.\n";
-            }
-
-            bool isPositive = expectedValue > 0.0f;
-            if (isPositive != expectedPositive) {
-                std::cout << axisNames[expectedAxis] << "-axis is pointing the WRONG direction.\n";
-                std::cout << "Flip the device 180 degrees around the other axes.\n";
-            }
-
-            std::cout << "Expected: " << positionNames[currentPosition] << "\n";
-            std::cout << std::string(50, '!') << "\n";
         }
 
     } /* namespace Sensors */
