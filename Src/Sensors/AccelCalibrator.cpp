@@ -271,7 +271,7 @@ namespace EdgeSense {
                 std::ostringstream oss;
                 oss << std::setprecision(4) << std::fixed
                     << "[ACCEL] Offsets computed:"
-                    << "  Bias (m/s2): [" << accel_bias[0] << ", " << accel_bias[1] << ", " << accel_bias[2] << "]"
+                    << "  Bias (g): [" << accel_bias[0] << ", " << accel_bias[1] << ", " << accel_bias[2] << "]"
                     << "  Scale: [" << accel_scale[0] << ", " << accel_scale[1] << ", " << accel_scale[2] << "]";
                 LOG_INFO(oss.str());
             } else {
