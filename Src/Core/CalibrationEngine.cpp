@@ -151,13 +151,12 @@ namespace EdgeSense {
                 /* Advance the calibrator's state machine */
                 activeCal->processCalibration();
 
-                /* Check if this sensor's calibration is complete */
                 if (activeCal->isComplete()) {
                     std::cout << "\n[CALIB] ✓ Calibration complete for: " << calibrationSequence[currentSensorIndex].name << "\n" << std::flush;
                     calibrationSequence[currentSensorIndex].isComplete = true;
-
-                    /* Move to next sensor */
                     transitionToNextSensor();
+                } else if (activeCal->isError()) {
+                    promptSkipOrRetry();
                 }
             }
         }
@@ -186,20 +185,43 @@ namespace EdgeSense {
         }
 
         void CalibrationEngine::promptUserForNextSensor() {
-            if (currentSensorIndex >= calibrationSequence.size()) {
-                return;
-            }
+            if (currentSensorIndex < calibrationSequence.size()) {
+                const std::string& sensorName = calibrationSequence[currentSensorIndex].name;
+                std::cout << "\n" << std::string(60, '=') << "\n";
+                std::cout << "CALIBRATION SEQUENCE STEP " << (currentSensorIndex + 1)
+                          << " of " << calibrationSequence.size() << "\n";
+                std::cout << "Sensor: " << sensorName << "\n";
+                std::cout << std::string(60, '=') << "\n";
+                std::cout << getStatusMessage() << "\n";
+                std::cout << "\nSTEP 1: Press ENTER to calibrate " << sensorName
+                          << ", or type 's' + ENTER to skip: " << std::flush;
 
-            std::cout << "\n" << std::string(60, '=') << "\n";
-            std::cout << "CALIBRATION SEQUENCE STEP " << (currentSensorIndex + 1) 
-                      << " of " << calibrationSequence.size() << "\n";
-            std::cout << "Sensor: " << calibrationSequence[currentSensorIndex].name << "\n";
-            std::cout << std::string(60, '=') << "\n";
-            std::cout << getStatusMessage() << "\n";
-            std::cout << "\nSTEP 1: Press ENTER to initialize calibration for " 
-                      << calibrationSequence[currentSensorIndex].name << "...\n";
-            std::cout << "(You will be prompted for specific positions/actions after this)\n";
-            std::cin.ignore();
+                std::string input;
+                std::getline(std::cin, input);
+
+                if (!input.empty() && (input[0] == 's' || input[0] == 'S')) {
+                    std::cout << "[CALIB] Skipping: " << sensorName << "\n" << std::flush;
+                    transitionToNextSensor();
+                }
+                /* else: ENTER pressed, currentState stays WAITING_USER, calibration proceeds */
+            }
+        }
+
+        void CalibrationEngine::promptSkipOrRetry() {
+            const std::string& sensorName = calibrationSequence[currentSensorIndex].name;
+            std::cout << "\n[CALIB] Calibration FAILED for: " << sensorName << "\n";
+            std::cout << "Press ENTER to retry, or type 's' + ENTER to skip: " << std::flush;
+
+            std::string input;
+            std::getline(std::cin, input);
+
+            if (!input.empty() && (input[0] == 's' || input[0] == 'S')) {
+                std::cout << "[CALIB] Skipping: " << sensorName << "\n" << std::flush;
+                transitionToNextSensor();
+            } else {
+                currentState = CalibState::WAITING_USER;
+                promptUserForNextSensor();
+            }
         }
 
         bool CalibrationEngine::saveAllCalibrationData() {

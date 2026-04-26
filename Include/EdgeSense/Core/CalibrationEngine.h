@@ -180,8 +180,14 @@ namespace EdgeSense {
 
             /**
              * @brief Prompt user for confirmation before moving to next sensor
+             * Accepts ENTER to proceed or 's' + ENTER to skip the current sensor
              */
             void promptUserForNextSensor();
+
+            /**
+             * @brief Prompt user to retry or skip after a calibration failure
+             */
+            void promptSkipOrRetry();
 
             /**
              * @brief Transition to next sensor in calibration sequence

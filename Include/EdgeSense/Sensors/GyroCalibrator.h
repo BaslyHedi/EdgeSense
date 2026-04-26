@@ -42,6 +42,7 @@ namespace EdgeSense {
             bool startCalibration() override;
             bool processCalibration() override;
             bool isComplete() const override;
+            bool isError() const override { return state == GyroState::ERROR; }
             std::string getStateString() const override;
 
             /**
@@ -75,6 +76,8 @@ namespace EdgeSense {
             void captureStaticSamples();
             void computeOffsets();
             bool verifyCalibration();
+            void displayLiveValues(const Vector3& reading);
+            bool isEnterPressed();
         };
 
     } /* namespace Sensors */

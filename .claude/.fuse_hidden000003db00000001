@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -v \"^.*:.*//.*$\")",
+      "Bash(cmake --preset host -B build/host)",
+      "Bash(cmake --build build/host)",
+      "Bash(cmake --preset rpi5)",
+      "Bash(cmake --build build/rpi5)"
+    ]
+  }
+}

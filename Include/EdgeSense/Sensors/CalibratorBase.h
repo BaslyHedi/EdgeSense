@@ -42,6 +42,12 @@ namespace EdgeSense {
             virtual bool isComplete() const = 0;
 
             /**
+             * @brief Check if calibration has failed
+             * @return true if the calibrator is in an error/failed state
+             */
+            virtual bool isError() const { return false; }
+
+            /**
              * @brief Get human-readable string of current calibration state
              * Used for user feedback during interactive calibration
              * @return State string (e.g., "WAIT_POSITION_1", "PROCESSING", "COMPLETE")
