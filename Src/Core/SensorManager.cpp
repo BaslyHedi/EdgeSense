@@ -19,7 +19,11 @@ namespace EdgeSense {
     namespace Core {
 
     SensorManager::SensorManager(ThreadManager& tm)
-        : tm(tm), I2c("/dev/i2c-1") {}
+        : tm(tm), I2c("/dev/i2c-1") 
+        {
+            /* Create the calibration engine insatnce to initilize the data */
+            CalibrationEngine::getInstance();
+        }
 
     bool SensorManager::init() {
         bool retVal = true;
@@ -118,6 +122,9 @@ namespace EdgeSense {
         auto aAvg = getAverage(registry.getAccelRawBuffer().getLatest(5));
         auto gAvg = getAverage(registry.getGyroRawBuffer().getLatest(5));
         auto mAvg = getAverage(registry.getMagRawBuffer().getLatest(5));
+
+        /* Apply calibration offsets */
+        CalibrationEngine::getInstance().applyCalibrationOffsets(aAvg, gAvg, mAvg);
 
         /* Update the Registry's thread-safe "Snapshots" */
         registry.updateFilteredImuAccel(aAvg.x, aAvg.y, aAvg.z);

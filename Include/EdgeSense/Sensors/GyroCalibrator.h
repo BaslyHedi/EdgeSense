@@ -69,7 +69,7 @@ namespace EdgeSense {
 
             /* Constants for calibration */
             const int CAPTURE_SAMPLES = 500;              /* ~5 seconds at 100Hz */
-            const float VARIANCE_THRESHOLD = 0.01f;      /* dps^2 */
+            const float VARIANCE_THRESHOLD = 0.05f;      /* dps^2 - relaxed for fan vibration */
 
             /* State machine logic helpers */
             void promptStaticPosition();

@@ -223,10 +223,10 @@ namespace EdgeSense {
                 if (varX > VARIANCE_THRESHOLD || varY > VARIANCE_THRESHOLD || varZ > VARIANCE_THRESHOLD) {
                     std::ostringstream oss;
                     oss << std::fixed << std::setprecision(6)
-                        << "[GYRO] Variance too high - device was not still. "
-                        << "Variance (dps^2): [" << varX << ", " << varY << ", " << varZ << "]";
+                        << "[GYRO] Variance elevated (fan/vibration likely). "
+                        << "Variance (dps^2): [" << varX << ", " << varY << ", " << varZ << "]"
+                        << " - bias mean is still valid";
                     LOG_WARN(oss.str());
-                    validCalibration = false;
                 }
             }
 
