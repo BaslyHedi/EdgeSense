@@ -22,22 +22,31 @@ namespace EdgeSense {
           * - Getters for sensor name and address to allow access to these properties without exposing internal state.
           * - A protected reference to the I2C bus that derived classes can use for communication with their respective hardware.
          */
+
+         /** 
+         * @brief Sensor Names definitions
+          * These are the default names for the sensors, which can be used for logging and identification purposes.
+          * They can be overridden in derived classes if needed.
+          */
+            #define LPS25HB_ENV_NAME "LPS25HB Pressure-Temperature"
+            #define LSM9DS1_IMU_ACCGYRO_NAME "LSM9DS1 Accel-Gyro"
+            #define LSM9DS1_IMU_MAG_NAME "LSM9DS1 Magneto"
         class Sensor {
         public:
             Sensor(const std::string& name, uint8_t address, HAL::I2cMaster& bus)
                 : name(name), address(address), i2cBus(bus) {}
 
-            // Interface methods
-            virtual bool initialize() = 0; // Pure virtual: Child MUST implement
-            virtual void update() = 0;     // Pure virtual: Child MUST implement
-            
+            /* Interface methods */
+            virtual bool initialize() = 0; /* Pure virtual: Child MUST implement */
+            virtual void update() = 0;     /* Pure virtual: Child MUST implement */
+
             std::string getName() const { return name; }
             uint8_t getAddress() const { return address; }
 
         protected:
             std::string name;
             uint8_t address;
-            HAL::I2cMaster& i2cBus; // Children use this to talk to hardware
+            HAL::I2cMaster& i2cBus; /* Children use this to talk to hardware */
         };
 
         /**
@@ -47,15 +56,15 @@ namespace EdgeSense {
         public:
             using Sensor::Sensor; 
             
-            virtual float getTemperature() const { return 0.0f; }   // Default if not supported
-            virtual float getPressure() const { return 0.0f; }   // Default if not supported
-            virtual float getHumidity() const { return 0.0f; }   // Default if not supported
+            virtual float getTemperature() const { return 0.0f; }   /* Default if not supported */
+            virtual float getPressure() const { return 0.0f; }       /* Default if not supported */
+            virtual float getHumidity() const { return 0.0f; }       /* Default if not supported */
         };
 
         /**
          * @brief Middle-layer for Motion Data
          */
-        // Simple structure for 3D data (IMU)
+        /* Simple structure for 3D data (IMU) */
         struct Vector3 {
             float x = 0.0f;
             float y = 0.0f;
@@ -71,5 +80,5 @@ namespace EdgeSense {
             virtual Vector3 getMagnetometer() const { return {0.0f,0.0f,0.0f}; }
         };
 
-    } // namespace Sensors
-} // namespace EdgeSense
+    } /* namespace Sensors */
+} /* namespace EdgeSense */

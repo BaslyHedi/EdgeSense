@@ -15,17 +15,23 @@
 namespace EdgeSense {
     namespace Core {
 
-    enum class Tier { Harvester, Refiner, Navigator };
+    enum class Tier { HARVESTER, REFINER, PROCESS };
+    enum class ExecutionMode { APP, CALIB, IDLE };
 
     /* Using slow sampling rates instead of the desired ones (1/5/10) => (5/25/50) */
     #define HARVESTER_CYCLETIME_MS 5
     #define REFINER_CYCLETIME_MS 25
-    #define NAVIGATOR_CYCLETIME_MS 50
+    #define PROCESS_CYCLETIME_MS 50
+
+    /* Debug Mode */
+    #define DEBUG_MODE true
+    #define LOG_DEBUG(msg) do { if (DEBUG_MODE) std::cout << "[DEBUG] " << msg << std::endl; } while(0)
 
     class ThreadManager {
         public:
-        /* Define the function signatures for our three tiers */
+            /* Define the function signatures for our 4 tiers */
             using TaskFunc = std::function<void()>;
+
             ThreadManager();
             ~ThreadManager();
 
@@ -33,38 +39,53 @@ namespace EdgeSense {
             void stop();
 
             /* Setters for the tasks */
-            void setHarvesterTask(TaskFunc task) { harvesterTask = task; }
-            void setRefinerTask(TaskFunc task) { refinerTask = task; }
-            void setNavigatorTask(TaskFunc task) { navigatorTask = task; }
+            bool setHarvesterTask(ExecutionMode exMode, TaskFunc task);
+            bool setRefinerTask(ExecutionMode exMode, TaskFunc task);
+            bool setProcessTask(ExecutionMode exMode, TaskFunc task);
+
+            /* Setter for execution mode */
+            void setExecutionMode(ExecutionMode mode);
+
+            /* Getter for execution mode */
+            ExecutionMode getExecutionMode() const { return currentMode; }
 
             /* Jitter Telemetry */
             long long getMaxJitter(Tier tier) const {
                 switch (tier) {
-                    case Tier::Harvester: return harvesterMaxJitterNs.load();
-                    case Tier::Refiner:   return refinerMaxJitterNs.load();
-                    case Tier::Navigator: return navigatorMaxJitterNs.load();
+                    case Tier::HARVESTER: return harvesterMaxJitterNs.load();
+                    case Tier::REFINER:   return refinerMaxJitterNs.load();
+                    case Tier::PROCESS: return processMaxJitterNs.load();  
                     default: return 0;
                 }
             }
 
         private:
-            void harvesterWrapper(); /* Handles timing + Jitter + calls injected task */
-            void refinerWrapper();   /* Handles 5ms timing + calls injected task */
-            void navigatorWrapper(); /* Handles 10ms timing + calls injected task */
+            void harvesterWrapper(); /* Handles timing + jitter measurement + calls injected task */
+            void refinerWrapper();   /* Handles 25ms timing + calls injected task */
+            void processWrapper();   /* Handles 50ms timing + calls injected task */
+            void WaitUntilNextCycle(struct timespec& next_time, int cycleTimeMs);
+            void updateMaxJitter(struct timespec& next_time, std::atomic<long long>& maxJitterNs);
 
-            std::atomic<bool> running{false};
+            ExecutionMode currentMode = ExecutionMode::IDLE;
+
+            /* Dual-Logic Containers */
+            struct {
+               TaskFunc harvest, refine, process;
+            } AppLogic;
+
+            struct {
+                TaskFunc harvest, process;
+            } CalibLogic;
             
             std::thread harvesterThread;
             std::thread refinerThread;
-            std::thread navigatorThread;
-
-            TaskFunc harvesterTask;
-            TaskFunc refinerTask;
-            TaskFunc navigatorTask;
+            std::thread processThread;
 
             std::atomic<long long> harvesterMaxJitterNs{0};
             std::atomic<long long> refinerMaxJitterNs{0};
-            std::atomic<long long> navigatorMaxJitterNs{0};
+            std::atomic<long long> processMaxJitterNs{0};
+
+            bool running = false; /* To signal threads to stop */
         };
 
     } /* namespace Core */

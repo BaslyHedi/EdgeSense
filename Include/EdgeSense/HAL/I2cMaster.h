@@ -26,7 +26,7 @@ namespace EdgeSense {
          *   I2cMaster i2c("/dev/i2c-1");
          *   if (i2c.openBus()) {
          *       uint8_t data;
-         *       i2c.readByte(0x5C, 0x0F, data);  // Read from device 0x5C, register 0x0F
+         *       i2c.readByte(0x5C, 0x0F, data);  (reads from device 0x5C, register 0x0F)
          *       i2c.closeBus();
          *   }
          */

@@ -15,5 +15,5 @@ public:
     ~Utils() = default;
 };
 
-} // namespace Utils
-} // namespace EdgeSense
+} /* namespace Utils */
+} /* namespace EdgeSense */

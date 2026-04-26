@@ -9,6 +9,17 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # Add compilation flags for professional safety
 add_compile_options(-Wall -Wextra -Wpedantic -Werror)
 
+# Embed Git commit hash into the binary for version tracking
+execute_process(
+  COMMAND git rev-parse --short HEAD
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+  OUTPUT_VARIABLE GIT_HASH
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+
+# Pass the hash into your C++ code as a macro definition
+add_definitions(-DGIT_COMMIT_HASH="${GIT_HASH}")
+
 # 2. Find Dependencies
 find_package(Threads REQUIRED)
 
@@ -23,6 +34,8 @@ set(PROJECT_SOURCES
     # Core Modules
     Src/Core/ThreadManager.cpp
     Src/Core/SensorManager.cpp
+    Src/Core/CalibDataStore.cpp
+    Src/Core/CalibrationEngine.cpp
     #  HAL Modules
     Src/HAL/I2cMaster.cpp
     # IPC Socket Server
@@ -34,6 +47,11 @@ set(PROJECT_SOURCES
     Src/Sensors/LSM9DS1_ImuSensAccGyro.cpp
     Src/Sensors/LSM9DS1_ImuSensMag.cpp
     Src/Sensors/LPS25HB_EnvSens.cpp
+    # Sensor Calibration
+    Src/Sensors/AccelCalibrator.cpp
+    Src/Sensors/GyroCalibrator.cpp
+    Src/Sensors/MagCalibrator.cpp
+    Src/Sensors/PressureTempCalibrator.cpp
     # Utility Functions
     Src/Utils/Utils.cpp
 )

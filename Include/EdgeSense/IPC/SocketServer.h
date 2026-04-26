@@ -15,5 +15,5 @@ public:
     ~SocketServer() = default;
 };
 
-} // namespace IPC
-} // namespace EdgeSense
+} /* namespace IPC */
+} /* namespace EdgeSense */

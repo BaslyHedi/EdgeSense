@@ -16,7 +16,7 @@
 
 namespace EdgeSense {
     namespace Sensors {
-        LSM9DS1_Mag::LSM9DS1_Mag(HAL::I2cMaster& bus) : ImuSensors("Magneto", 0x1C, bus), 
+        LSM9DS1_Mag::LSM9DS1_Mag(HAL::I2cMaster& bus) : ImuSensors(LSM9DS1_IMU_MAG_NAME, 0x1C, bus), 
             magneto({0.0f, 0.0f, 0.0f}) {}
 
         bool LSM9DS1_Mag::initialize() {
@@ -24,7 +24,7 @@ namespace EdgeSense {
             bool configresVal = true;
             bool retVal = true;
             
-            // 1. Verify WHO_AM_I (Register 0x0F)
+            /* 1. Verify WHO_AM_I (Register 0x0F) */
             if (!i2cBus.readByte(address, 0x0F, id) || id != 0x3D) {
                 LOG_ERROR(name + ": ID Mismatch. Expected 0x3D, got 0x" + std::to_string(id));
                 retVal = false;
@@ -52,7 +52,7 @@ namespace EdgeSense {
                 retVal = false;
             }
 
-            LOG_INFO(name + ": Magnetometer initialized successfully.");
+            LOG_INFO(name + ": initialized successfully.");
             return retVal;
         }
 

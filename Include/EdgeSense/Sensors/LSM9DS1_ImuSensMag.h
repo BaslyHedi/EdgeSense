@@ -2,7 +2,7 @@
  * @file LSM9DS1_ImuSensMag.h
  * @author Hedi Basly
  * @brief Header for LSM9DS1 ImuSensor module for Magnetometer
- * @date 2026-02-16
+ * @date 2026-04-05
  */
 #pragma once
 
@@ -22,9 +22,9 @@ namespace EdgeSense {
         private:
             Vector3 magneto;
 
-            // Helper to combine high/low bytes into a signed 16-bit integer
+            /* Helper to combine high/low bytes into a signed 16-bit integer */
             int16_t stitch(uint8_t low, uint8_t high) const;
         };
 
-    } // namespace Sensors
-} // namespace EdgeSense
+    } /* namespace Sensors */
+} /* namespace EdgeSense */

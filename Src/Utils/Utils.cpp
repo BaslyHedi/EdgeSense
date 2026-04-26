@@ -9,7 +9,7 @@
 namespace EdgeSense {
 namespace Utils {
 
-// Implementation goes here
+/* Implementation goes here */
 
-} // namespace Utils
-} // namespace EdgeSense
+} /* namespace Utils */
+} /* namespace EdgeSense */
