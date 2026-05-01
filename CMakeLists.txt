@@ -54,6 +54,9 @@ set(PROJECT_SOURCES
     Src/Sensors/PressureTempCalibrator.cpp
     # Utility Functions
     Src/Utils/Utils.cpp
+    # Navigator (AHRS / Orientation)
+    Src/Navigator/MadgwickFilter.cpp
+    Src/Navigator/AhrsEngine.cpp
 )
 
 add_executable(${BINARY_NAME} ${PROJECT_SOURCES})

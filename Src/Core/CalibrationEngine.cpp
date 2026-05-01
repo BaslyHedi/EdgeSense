@@ -26,6 +26,7 @@ namespace EdgeSense {
         CalibrationEngine::CalibrationEngine() {
             dataStore = std::make_unique<CalibDataStore>();
             initializeCalibrators();
+            loadExistingCalibration();
         }
 
         CalibrationEngine::~CalibrationEngine() {

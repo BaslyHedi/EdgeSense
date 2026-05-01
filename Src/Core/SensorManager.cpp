@@ -5,10 +5,10 @@
  * @date 2026-04-06
  */
 #include <EdgeSense/Core/SensorManager.h>
+#include <EdgeSense/Navigator/AhrsEngine.h>
 #include <EdgeSense/Logger/Logger.h>
 #include <iomanip>
 #include <iostream>
-#include <sstream>
 
 using namespace EdgeSense::Core;
 using namespace EdgeSense::Sensors;
@@ -139,36 +139,65 @@ namespace EdgeSense {
         }
     }
 
+    void SensorManager::toggleDisplayMode() {
+        m_rollingLog = !m_rollingLog;
+        m_firstPrint = true; /* suppress cursor-up on first print after the switch */
+    }
+
     void SensorManager::appProcessAction() {
-        /* * This runs at 100Hz. 
-         * Handles logging, IPC broadcast, or AHRS math.
-         */
-        static int printDivisor = 0;
+
+        /* Drive the AHRS filter — computes orientation and stores it in SensorsRegistry */
+        EdgeSense::Navigator::AhrsEngine::getInstance().update();
+
+        /* Read calibrated sensor snapshots */
         auto& registry = EdgeSense::Sensors::SensorsRegistry::getInstance();
-        
-        float ax, ay, az, gx, gy, gz, mx, my, mz, press, temp;
-        
-        /* Pull the clean snapshots */
+        float ax, ay, az, gx, gy, gz, mx, my, mz;
         registry.getFilteredImuAccel(ax, ay, az);
         registry.getFilteredImuGyro(gx, gy, gz);
         registry.getFilteredImuMag(mx, my, mz);
-        registry.getFilteredEnv(press, temp);
 
-        /* Log sensor data at 10Hz (every 100ms) to avoid CPU bloat */
-        if (++printDivisor >= 10) {
-            /* Dashboard: [IMU]=Motion [MAG]=Heading [ENV]=Atmosphere [JIT]=OS Health */
-            std::ostringstream oss;
-            oss << std::fixed << std::setprecision(2)
-                << "[IMU] Accel: (" << ax << ", " << ay << ", " << az << ")"
-                << " | Gyro: (" << gx << ", " << gy << ", " << gz << ")"
-                << " | [MAG] (" << mx << ", " << my << ", " << mz << ")"
-                << " | [ENV] " << press << "hPa " << temp << "C"
-                << " | [JIT] H:" << (tm.getMaxJitter(EdgeSense::Core::Tier::HARVESTER) / 1000)
-                << "us R:" << (tm.getMaxJitter(EdgeSense::Core::Tier::REFINER) / 1000)
-                << "us P:" << (tm.getMaxJitter(EdgeSense::Core::Tier::PROCESS) / 1000) << "us";
-            LOG_INFO(oss.str());
-            printDivisor = 0;
+        /* Read orientation */
+        float roll, pitch, yaw;
+        bool  valid;
+        registry.getOrientation(roll, pitch, yaw, valid);
+
+        /* Read AHRS diagnostics */
+        float diagAccelMag, diagMagMag, diagBeta;
+        bool  diagMagValid;
+        EdgeSense::Navigator::AhrsEngine::getInstance()
+            .getDiagnostics(diagAccelMag, diagMagMag, diagMagValid, diagBeta);
+
+        /* In refresh mode, move the cursor up 2 lines to overwrite the previous output.
+         * In rolling log mode, each cycle appends new lines — useful for capturing a
+         * time series or piping output to a file. */
+        if (!m_rollingLog && !m_firstPrint) {
+            std::cout << "\033[2A";
         }
+        m_firstPrint = false;
+
+        /* Line 1 — raw sensor data */
+        std::cout << std::fixed << std::setprecision(2)
+                  << "\r\033[K[IMU]"
+                  << " A:(" << std::setw(5) << ax << "," << std::setw(5) << ay << "," << std::setw(5) << az << ")"
+                  << " G:(" << std::setw(6) << gx << "," << std::setw(6) << gy << "," << std::setw(6) << gz << ")"
+                  << " M:(" << std::setw(7) << mx << "," << std::setw(7) << my << "," << std::setw(7) << mz << ")\n";
+
+        /* Line 2 — orientation angles + filter state + OS jitter */
+        std::cout << std::setprecision(1)
+                  << "\r\033[K[AHRS] Roll: " << std::setw(7) << roll
+                  << "  Pitch: "             << std::setw(7) << pitch
+                  << "  Yaw: "               << std::setw(7) << yaw
+                  << std::setprecision(2)
+                  << "  |a|:" << (diagAccelMag / 9.80665f) << "g"
+                  << "  |m|:" << diagMagMag   << "G"
+                  << (diagMagValid ? " 9DOF" : " 6DOF")
+                  << "  b:"  << diagBeta
+                  << "  | [JIT] H:" << (tm.getMaxJitter(EdgeSense::Core::Tier::HARVESTER) / 1000)
+                  << "us R:"        << (tm.getMaxJitter(EdgeSense::Core::Tier::REFINER)   / 1000)
+                  << "us P:"        << (tm.getMaxJitter(EdgeSense::Core::Tier::PROCESS)   / 1000) << "us"
+                  << (valid ? "" : "  [WARMUP]")
+                  << "\n"
+                  << std::flush;
     }
 
     void SensorManager::setupAppTasks() {

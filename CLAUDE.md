@@ -139,6 +139,7 @@ EdgeSense/
 2. **Resource Management:** Use RAII for hardware handles, file descriptors, and loggers. Avoid opening files or initiating heavy I/O inside high-frequency real-time loops.
 3. **Timing:** Use absolute time computations to prevent clock drift over long runs.
 4. **Functions:** All functions have a single entry and exit points. Do not use return in the middle of functions
+5. **Senior Engineer Mindset:** Before every design decision, ask: *"What would a senior software engineer do?"* — prefer proven algorithms over custom ones, separate concerns strictly, avoid premature abstraction, measure timing accurately, document unit conventions explicitly, and never leave unexplained "magic numbers".
 
 ## Design Patterns Summary
 

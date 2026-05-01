@@ -98,5 +98,21 @@ namespace EdgeSense {
         temp = f_temp;
     }
 
+    void SensorsRegistry::updateOrientation(float roll_deg, float pitch_deg, float yaw_deg, bool valid) {
+        std::lock_guard<std::mutex> lock(dataMutex);
+        f_roll_deg         = roll_deg;
+        f_pitch_deg        = pitch_deg;
+        f_yaw_deg          = yaw_deg;
+        f_orientation_valid = valid;
+    }
+
+    void SensorsRegistry::getOrientation(float& roll_deg, float& pitch_deg, float& yaw_deg, bool& valid) {
+        std::lock_guard<std::mutex> lock(dataMutex);
+        roll_deg  = f_roll_deg;
+        pitch_deg = f_pitch_deg;
+        yaw_deg   = f_yaw_deg;
+        valid     = f_orientation_valid;
+    }
+
     } /* namespace Sensors */
 } /* namespace EdgeSense */

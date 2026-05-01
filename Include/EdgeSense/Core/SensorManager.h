@@ -23,10 +23,14 @@ namespace EdgeSense {
         SensorManager(ThreadManager& tm);
 
         /* Orchestration Logic */
-        bool init(); 
+        bool init();
         void runApplication();
         void runCalibration();
         void stop();
+
+        /* Switch between in-place refresh (false, default) and rolling log (true).
+         * Safe to call from any thread — the change takes effect on the next PROCESS cycle. */
+        void toggleDisplayMode();
 
     private:
         /* References for external objects */
@@ -37,6 +41,10 @@ namespace EdgeSense {
         std::unique_ptr <EdgeSense::Sensors::EnvSensors> Pi_LPS25HB = std::make_unique<EdgeSense::Sensors::LPS25HB>(I2c);
         std::unique_ptr <EdgeSense::Sensors::ImuSensors> Pi_LSM9DS1AG = std::make_unique<EdgeSense::Sensors::LSM9DS1_AccGyro>(I2c);
         std::unique_ptr <EdgeSense::Sensors::ImuSensors> Pi_LSM9DS1Mag = std::make_unique<EdgeSense::Sensors::LSM9DS1_Mag>(I2c);
+
+        /* Display state */
+        bool m_rollingLog = false; /* false = refresh in-place; true = rolling log */
+        bool m_firstPrint = true;  /* reset whenever display mode changes */
 
         /* Pre-defined task builders */
         void setupAppTasks();

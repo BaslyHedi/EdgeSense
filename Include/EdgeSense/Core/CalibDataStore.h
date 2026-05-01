@@ -20,22 +20,22 @@ namespace EdgeSense {
          * Can be serialized to binary or JSON format for persistence.
          */
         struct FullCalibration {
-            uint32_t session_id;           /* Unique hash linking binary and JSON files */
-            
+            uint32_t session_id = 0;
+
             /* Accelerometer calibration (bias + scale) */
-            float accel_bias[3];           /* m/s^2 */
-            float accel_scale[3];          /* Scale factors (1.0 = no scaling) */
-            
-            /* Gyroscope calibration (bias only - no scale needed) */
-            float gyro_bias[3];            /* rad/s */
-            
+            float accel_bias[3]  = {0.0f, 0.0f, 0.0f}; /* m/s^2 */
+            float accel_scale[3] = {1.0f, 1.0f, 1.0f}; /* 1.0 = identity (no scaling) */
+
+            /* Gyroscope calibration (bias only) */
+            float gyro_bias[3]   = {0.0f, 0.0f, 0.0f}; /* °/s */
+
             /* Magnetometer calibration (hard-iron + soft-iron) */
-            float mag_bias[3];             /* Hard-iron offset (µT) */
-            float mag_scale[3];            /* Soft-iron scale factors (1.0 = no scaling) */
-            
-            /* Environmental baseline (optional for reference) */
-            float baseline_pressure;       /* hPa */
-            float baseline_temperature;    /* °C */
+            float mag_bias[3]    = {0.0f, 0.0f, 0.0f}; /* mG */
+            float mag_scale[3]   = {1.0f, 1.0f, 1.0f}; /* 1.0 = identity (no scaling) */
+
+            /* Environmental baseline */
+            float baseline_pressure    = 0.0f;           /* hPa */
+            float baseline_temperature = 0.0f;           /* °C */
         };
 
         /**
