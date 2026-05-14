@@ -52,6 +52,7 @@ namespace EdgeSense {
             bool startCalibration() override;
             bool processCalibration() override;
             bool isComplete() const override;
+            bool isError() const override { return state == AccelState::ERROR; }
             std::string getStateString() const override;
 
             /**

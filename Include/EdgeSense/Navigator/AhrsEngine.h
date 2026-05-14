@@ -32,8 +32,8 @@
 /* Madgwick gradient-descent gain.
  * Higher = stronger accel/mag correction, faster convergence, more noise sensitivity.
  * Lower  = smoother output, slower correction, more gyro drift.
- * Tune here only. Typical range [0.1, 0.5]. */
-#define AHRS_MADGWICK_BETA 0.5f
+ * Tune here only. Typical range [0.1, 1.5]. */
+#define AHRS_MADGWICK_BETA 1.0f
 
 /* Standard gravity (m/s²). The LSM9DS1 accel outputs m/s² (0.000061 g/LSB × 9.80665).
  * Used as the rest reference for the motion detection gate below. */
@@ -48,10 +48,25 @@
 #define AHRS_MOTION_THRESHOLD 0.981f
 
 /* Beta used during the WARMUP_CYCLES period only.
- * A higher value snaps the quaternion from identity to true orientation in the first
- * few cycles (~350 ms at 20 Hz) instead of drifting in slowly with the normal beta.
- * Set to 0 to disable warmup acceleration (treat warmup cycles like normal cycles). */
-#define AHRS_WARMUP_BETA 2.0f
+ * Must be high enough to converge yaw from 0° to true magnetic heading within
+ * WARMUP_CYCLES steps, but kept below ~1.5 to avoid period-2 oscillation in
+ * pitch/roll caused by the coupled magnetometer gradient during yaw convergence. */
+#define AHRS_WARMUP_BETA 1.0f
+
+/* Gyroscope rotation-rate threshold for adaptive beta scaling (rad/s).
+ * When |ω| is small (near-static board), the accel correction reference is reliable
+ * and beta can be applied at full strength. When |ω| exceeds this threshold the board
+ * is rotating, and the accel reading is increasingly delayed relative to true gravity
+ * direction — the correction starts fighting the rotation instead of correcting drift.
+ *
+ * Above the threshold, effectiveBeta is scaled down as:
+ *   beta_effective = beta × (GYRO_THRESHOLD / |ω|)
+ * This keeps the accel contribution smaller than the gyro integration, allowing the
+ * filter to track the rotation instead of anchoring to the previous "flat" orientation.
+ *
+ * 0.1 rad/s ≈ 5.7 °/s — well above the typical calibrated gyro residual (< 0.5°/s)
+ * and well below any deliberate hand rotation (typically 30–300 °/s). */
+#define AHRS_GYRO_THRESHOLD_RADS 0.1f
 
 /* Magnetometer norm sanity gate (Gauss — matches LSM9DS1 output units: 0.00014 G/LSB).
  * Earth's field ranges ~0.25–0.65 G depending on location.
@@ -60,6 +75,13 @@
  * that bad magnetic data cannot corrupt pitch and roll via the shared gradient terms. */
 #define AHRS_MAG_NORM_MIN  0.1f   /* Gauss */
 #define AHRS_MAG_NORM_MAX  1.2f   /* Gauss */
+
+/* Gravity alignment gate (degrees).
+ * The 9-DOF Madgwick gradient couples the magnetic and gravity terms. When roll/pitch
+ * error is large (>20°), the magnetic gradient partially opposes gravity correction,
+ * reducing effective convergence rate by up to 6×. Force 6-DOF until the gravity
+ * vector is aligned, then re-enable magnetometer for yaw tracking only. */
+#define AHRS_GRAVITY_CONVERGENCE_THRESHOLD_DEG 20.0f
 
 namespace EdgeSense {
     namespace Navigator {
@@ -94,11 +116,15 @@ namespace EdgeSense {
         bool isReady() const;
 
         /* Last-cycle diagnostics — read from the dashboard thread after update().
-         * accelMag : |accel| in g  (should be ~1.0 at rest; deviation triggers motion gate)
-         * magMag   : |mag|   in G  (should be 0.25–0.65 G; outside range → 6-DOF fallback)
-         * magValid : true = 9-DOF used; false = fell back to 6-DOF this cycle
-         * beta     : effective Madgwick beta actually applied this cycle */
-        void getDiagnostics(float& accelMag, float& magMag, bool& magValid, float& beta) const;
+         * accelMag    : |accel| in g   (should be ~1.0 at rest; deviation triggers motion gate)
+         * magMag      : |mag|   in G   (should be 0.25–0.65 G; outside range → 6-DOF fallback)
+         * magValid    : true = 9-DOF used; false = fell back to 6-DOF this cycle
+         * beta        : effective Madgwick beta actually applied this cycle
+         * gyroMag     : |ω| in rad/s  (above AHRS_GYRO_THRESHOLD_RADS → beta was scaled down)
+         * gravityError: angle (°) between filter's gravity estimate and measured accel;
+         *               >20° → gravity gate active, mag gradient bypassed for fast catch-up */
+        void getDiagnostics(float& accelMag, float& magMag, bool& magValid,
+                             float& beta, float& gyroMag, float& gravityError) const;
 
     private:
 
@@ -113,13 +139,15 @@ namespace EdgeSense {
         bool  m_firstCall;
 
         /* Diagnostic state written each update() cycle, read by getDiagnostics() */
-        float m_lastAccelMag = 1.0f;
-        float m_lastMagMag   = 0.0f;
-        bool  m_lastMagValid = false;
-        float m_lastBeta     = 0.0f;
+        float m_lastAccelMag     = 1.0f;
+        float m_lastMagMag       = 0.0f;
+        bool  m_lastMagValid     = false;
+        float m_lastBeta         = 0.0f;
+        float m_lastGyroMag      = 0.0f; /* rad/s — shows how much the gyro scaling reduced beta */
+        float m_lastGravityError = 0.0f; /* degrees — >20° means gravity gate active (6-DOF) */
 
-        /* 40 cycles × 50ms = 2 seconds warm-up */
-        static constexpr int WARMUP_CYCLES = 40;
+        /* 200 cycles × 10ms = 2 seconds warm-up */
+        static constexpr int WARMUP_CYCLES = 200;
 
         static constexpr float DEG_TO_RAD = 3.14159265358979323846f / 180.0f;
         static constexpr float RAD_TO_DEG = 180.0f / 3.14159265358979323846f;

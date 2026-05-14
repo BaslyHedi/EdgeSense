@@ -43,8 +43,9 @@ namespace EdgeSense {
         std::unique_ptr <EdgeSense::Sensors::ImuSensors> Pi_LSM9DS1Mag = std::make_unique<EdgeSense::Sensors::LSM9DS1_Mag>(I2c);
 
         /* Display state */
-        bool m_rollingLog = false; /* false = refresh in-place; true = rolling log */
-        bool m_firstPrint = true;  /* reset whenever display mode changes */
+        bool m_rollingLog  = false; /* false = refresh in-place; true = rolling log */
+        bool m_firstPrint  = true;  /* reset whenever display mode changes */
+        int  m_displayTick = 0;     /* throttles debug output to 20Hz while AHRS runs at 100Hz */
 
         /* Pre-defined task builders */
         void setupAppTasks();

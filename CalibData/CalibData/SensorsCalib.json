@@ -1,19 +1,19 @@
 {
-  "session_id": 1777210704,
-  "timestamp": "1777210704735182501",
+  "session_id": 1778762767,
+  "timestamp": "1778762767109799641",
   "accelerometer": {
-    "bias": [-0.016807, -0.011992, -0.017946],
-    "scale": [9.857767, 9.840702, 9.803889]
+    "bias": [-0.035124, 0.002865, -0.025700],
+    "scale": [9.850519, 9.839900, 9.797186]
   },
   "gyroscope": {
-    "bias": [4.769712, 2.128350, 1.995788]
+    "bias": [5.573995, 2.404570, 8.198942]
   },
   "magnetometer": {
-    "hard_iron_bias": [0.200830, -0.095480, -0.130760],
+    "hard_iron_bias": [0.321020, -0.517720, -0.410060],
     "soft_iron_scale": [1.000000, 1.000000, 1.000000]
   },
   "environmental": {
-    "baseline_pressure_hpa": 977.186157,
-    "baseline_temperature_c": 33.670868
+    "baseline_pressure_hpa": 955.468689,
+    "baseline_temperature_c": 32.787560
   }
 }

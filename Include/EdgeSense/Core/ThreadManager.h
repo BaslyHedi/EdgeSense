@@ -18,10 +18,10 @@ namespace EdgeSense {
     enum class Tier { HARVESTER, REFINER, PROCESS };
     enum class ExecutionMode { APP, CALIB, IDLE };
 
-    /* Using slow sampling rates instead of the desired ones (1/5/10) => (5/25/50) */
+    /* Using slow sampling rates instead of the desired ones (1/5/10) => (5/10/10) */
     #define HARVESTER_CYCLETIME_MS 5
-    #define REFINER_CYCLETIME_MS 25
-    #define PROCESS_CYCLETIME_MS 50
+    #define REFINER_CYCLETIME_MS 10
+    #define PROCESS_CYCLETIME_MS 10
 
     /* Debug Mode */
     #define DEBUG_MODE true

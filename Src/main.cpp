@@ -52,7 +52,7 @@ int main(int argc, char* argv[]) {
     } else {
         LOG_INFO("Running in APPLICATION mode");
         sensorManager.runApplication();
-        sensorManager.toggleDisplayMode();
+        // sensorManager.toggleDisplayMode();
     }
     
     /* Keep main alive and monitor thread mode */
