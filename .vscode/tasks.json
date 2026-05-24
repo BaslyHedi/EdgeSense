@@ -2,10 +2,17 @@
     "version": "2.0.0",
     "tasks": [
         {
+            "label": "Rebuild",
+            "type": "shell",
+            "command": "cmake --build ${workspaceFolder}/build/rpi5 --clean-first",
+            "group": "build",
+            "problemMatcher": ["$gcc"]
+        },
+        {
             "label": "Deploy to HediPi",
             "type": "shell",
             "command": "scp ${workspaceFolder}/build/rpi5/EdgeSenseApp HediPi:/home/hedi/EdgeSenseApp",
-            "dependsOn": "CMake: build", 
+            "dependsOn": "Rebuild",
             "group": {
                 "kind": "build",
                 "isDefault": true
