@@ -33,9 +33,10 @@ namespace EdgeSense {
 
         /* beta : gradient-descent step size (accel/mag correction rate).
          * zeta : gyro bias estimation rate.
-         * Derived from measurement noise: β = √(3/4)·σ_gyro, ζ = √(3/4)·σ_drift.
-         * Practical values for MEMS gyros: beta ≈ 0.033, zeta ≈ 0.015. */
-        explicit MadgwickFilter(float beta = 0.033f, float zeta = 0.015f);
+         * Tuning constants are owned by the caller (see AHRS_MADGWICK_BETA /
+         * AHRS_MADGWICK_ZETA in AhrsEngine.h). No defaults here to prevent
+         * silent divergence between the filter and the engine configuration. */
+        MadgwickFilter(float beta, float zeta);
 
         /* 9-DOF update (accel + gyro + mag). Modifies q and internal bias in place.
          * Bias is applied to gyro before integration (Eq. 47–49). */
@@ -77,7 +78,8 @@ namespace EdgeSense {
         float invSqrt(float x) const;
 
         /* Shared bias update: given a normalized gradient [s0..s3] and the current
-         * quaternion, accumulates the body-frame gyro error into the bias estimate. */
+         * quaternion, integrates the body-frame gyro error into the bias estimate.
+         * Uses += so the bias converges toward the true gyro offset (Alg. 3, Eq. 47–49). */
         void updateBias(float q0, float q1, float q2, float q3,
                         float s0, float s1, float s2, float s3,
                         float dt);

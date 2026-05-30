@@ -13,10 +13,10 @@
  *   subtracted from the raw gyro reading before integration so that residual bias
  *   does not accumulate when β is reduced or gated.
  *
- *   Bias rate (vector part of 2·q*⊗ŝ, negated by ζ):
- *     bDot_x = -2ζ · (q0·s1 − q1·s0 − q2·s3 + q3·s2)
- *     bDot_y = -2ζ · (q0·s2 + q1·s3 − q2·s0 − q3·s1)
- *     bDot_z = -2ζ · (q0·s3 − q1·s2 + q2·s1 − q3·s0)
+ *   Bias rate (vector part of 2·q*⊗ŝ, per Madgwick 2010 Algorithm 3):
+ *     bDot_x = +2ζ · (q0·s1 − q1·s0 − q2·s3 + q3·s2)
+ *     bDot_y = +2ζ · (q0·s2 + q1·s3 − q2·s0 − q3·s1)
+ *     bDot_z = +2ζ · (q0·s3 − q1·s2 + q2·s1 − q3·s0)
  */
 
 #include <EdgeSense/Navigator/MadgwickFilter.h>
@@ -55,11 +55,15 @@ namespace EdgeSense {
                                      float dt)
     {
         /* Eq. 47–49: body-frame gyro error = vector part of 2·q*⊗ŝ.
-         * Bias integrates in the direction that cancels the persistent gradient error. */
+         * Bias converges toward the true gyro offset: b_{k+1} = b_k + 2ζ·e_w·dt
+         * so that (gyro_raw - b) → 0 over time.
+         * Sign must be += (additive) per Madgwick 2010 Algorithm 3 and the x-io
+         * reference implementation. A -= here inverts the integrator and amplifies
+         * residual bias instead of cancelling it. */
         float twoZeta = 2.0f * m_zeta;
-        m_bx -= twoZeta * (q0*s1 - q1*s0 - q2*s3 + q3*s2) * dt;
-        m_by -= twoZeta * (q0*s2 + q1*s3 - q2*s0 - q3*s1) * dt;
-        m_bz -= twoZeta * (q0*s3 - q1*s2 + q2*s1 - q3*s0) * dt;
+        m_bx += twoZeta * (q0*s1 - q1*s0 - q2*s3 + q3*s2) * dt;
+        m_by += twoZeta * (q0*s2 + q1*s3 - q2*s0 - q3*s1) * dt;
+        m_bz += twoZeta * (q0*s3 - q1*s2 + q2*s1 - q3*s0) * dt;
     }
 
     void MadgwickFilter::update(Quaternion& q,

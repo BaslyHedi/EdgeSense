@@ -103,9 +103,10 @@ namespace EdgeSense {
     }
 
     void SensorManager::appRefineAction() {
-        /* * This runs at 200Hz. 
-         * It takes the raw data, applies the calibration offsets, 
-         * and saves the clean data back to the registry.
+        /* Runs at 100Hz (REFINER_CYCLETIME_MS = 10ms).
+         * Averages the last REFINER_WINDOW_SAMPLES Harvester samples (a complete
+         * 10ms window with no stale data), applies calibration, and writes
+         * clean snapshots to the registry for the AHRS to consume.
          */
         auto& registry = EdgeSense::Sensors::SensorsRegistry::getInstance();
         
@@ -120,10 +121,10 @@ namespace EdgeSense {
             return EdgeSense::Sensors::Vector3{avg.x/n, avg.y/n, avg.z/n};
         };
 
-        /* Process IMU data */
-        auto aAvg = getAverage(registry.getAccelRawBuffer().getLatest(5));
-        auto gAvg = getAverage(registry.getGyroRawBuffer().getLatest(5));
-        auto mAvg = getAverage(registry.getMagRawBuffer().getLatest(5));
+        /* Process IMU data — window exactly covers one Refiner period, no stale samples. */
+        auto aAvg = getAverage(registry.getAccelRawBuffer().getLatest(REFINER_WINDOW_SAMPLES));
+        auto gAvg = getAverage(registry.getGyroRawBuffer().getLatest(REFINER_WINDOW_SAMPLES));
+        auto mAvg = getAverage(registry.getMagRawBuffer().getLatest(REFINER_WINDOW_SAMPLES));
 
         /* Apply calibration offsets */
         CalibrationEngine::getInstance().applyCalibrationOffsets(aAvg, gAvg, mAvg);

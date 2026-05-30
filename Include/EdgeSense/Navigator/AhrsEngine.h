@@ -31,22 +31,16 @@
  * With observed gz_residual ≈ 0.006 rad/s: β > 0.017 required.
  * β=0.025 gives correction rate 0.0088 rad/s — 47% margin over gz_residual.
  *
- * Yaw drift at β=0.025 ≈ 0.33°/s (vs 1.88°/s at β=0.033) — acceptable trade-off.
- * Once gyro is recalibrated at thermal steady-state (gz_residual < 0.001 rad/s),
- * β can be reduced to 0.01 to minimise yaw correction from mag residuals.
- *
- * Must NOT be tuned upward to compensate for missing gyro bias estimation —
- * use AHRS_MADGWICK_ZETA for that instead. */
-#define AHRS_MADGWICK_BETA  0.025f
+ * Derived from β = √(3/4)·σ_gyro where σ_gyro is the gyro measurement noise.
+ * At 0.08: recovery from a 4° post-maneuver error takes ~3 s vs ~35 s at 0.025.
+ * If Roll/Pitch become noisy during vibration, reduce toward 0.05. */
+#define AHRS_MADGWICK_BETA  0.08f
 
 /* Madgwick ζ: gyro bias estimation rate (Eq. 47–49 of Madgwick 2010).
  * Integrates the body-frame angular error into a running bias correction so
  * that residual calibration error does not accumulate over time.
- * Lower ζ → slower convergence but monotonic (no overshoot/oscillation).
- * Higher ζ → faster convergence but risks oscillation when residual bias is
- * large (>0.5°/s, e.g. from thermal drift). At ζ=0.01 the maximum convergence
- * rate is 2·ζ·dt = 0.001 rad/s per cycle, reaching 0.03 rad/s bias in ~30 cycles. */
-#define AHRS_MADGWICK_ZETA  0.01f
+ * At 0.035: corrects a 0.5°/s gyro bias residual in ~2 s instead of ~30 s. */
+#define AHRS_MADGWICK_ZETA  0.035f
 
 /* Standard gravity reference (m/s²). */
 #define AHRS_GRAVITY_MS2    9.80665f

@@ -5,9 +5,22 @@
 
 ## Core Architecture
 The framework relies on a decoupled three-tier Producer-Consumer pipeline:
-1. **Harvester (1ms / 1kHz):** `SCHED_FIFO` real-time thread. Rapidly reads raw I2C registers to ensure minimal hardware latency.
-2. **Refiner (5ms / 200Hz):** Medium-priority thread. Averages and filters raw circular buffers into clean data snapshots.
-3. **Navigator (10ms / 100Hz):** `SCHED_OTHER` background thread. Consumes clean data for telemetry, logging, and future AHRS (Orientation) math.
+
+1. **Harvester (5ms / 200Hz):** `SCHED_FIFO` real-time thread. Rapidly reads raw I2C registers. The combined I2C transaction (AccGyro + Mag + Baro) takes ~3.9 ms on the Pi5; `HARVESTER_CYCLETIME_MS` must stay above this to prevent the thread from busy-looping (see jitter note below).
+2. **Refiner (10ms / 100Hz):** Medium-priority thread. Averages exactly `REFINER_WINDOW_SAMPLES` (= 2) fresh Harvester samples into clean data snapshots — a complete 10ms window with no stale data.
+3. **Navigator/Process (10ms / 100Hz):** `SCHED_OTHER` background thread. Runs the AHRS Madgwick filter and writes orientation to SensorsRegistry at 100Hz.
+
+> **IMPORTANT — Log display rate vs. real AHRS rate:**
+> The `[DATA]` lines in `log.log` appear every **50 ms** (20 Hz) because `appProcessAction` throttles
+> its terminal/file output to every 5th call (`m_displayTick % 5 == 0`).
+> The Madgwick filter itself is called on **every** Process tick: 100 Hz / 10 ms.
+> The `t=` timestamps in the log are display-tick timestamps (50 ms steps), NOT filter update timestamps.
+> Never use log line spacing to infer the AHRS update rate — use `PROCESS_CYCLETIME_MS` in
+> `Include/EdgeSense/Core/ThreadManager.h` (currently 10 ms = 100 Hz).
+> `REFINER_WINDOW_SAMPLES = REFINER_CYCLETIME_MS / HARVESTER_CYCLETIME_MS` must always be
+> referenced by name in `getLatest()` — never a literal — so the averaging window stays
+> correct whenever cycle times change. A `static_assert` in `ThreadManager.h` enforces
+> that Refiner is a strict integer multiple of Harvester at compile time.
 
 ## Sensor Details
 

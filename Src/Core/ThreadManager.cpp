@@ -21,6 +21,13 @@ namespace EdgeSense {
             LOG_ERROR("Attempted to start ThreadManager while not in IDLE mode. Start aborted.");
             return;
         }
+
+        /* Emit timing summary so any mismatch is immediately visible in the log. */
+        LOG_INFO("[ThreadManager] Timing: H=" + std::to_string(HARVESTER_CYCLETIME_MS) +
+                 "ms R=" + std::to_string(REFINER_CYCLETIME_MS) +
+                 "ms P=" + std::to_string(PROCESS_CYCLETIME_MS) +
+                 "ms  refine-window=" + std::to_string(REFINER_WINDOW_SAMPLES) + " samples");
+
         /* Initialize running flag */
         running = true;
         /* Create threads */

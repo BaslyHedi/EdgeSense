@@ -284,9 +284,20 @@ namespace EdgeSense {
          * Convention for the degenerate case: set Roll = 0, Yaw absorbs heading.
          *   North pole (+90°): Yaw = +2·atan2(q3, q0)
          *   South pole (−90°): Yaw = −2·atan2(q3, q0)
-         * This is a fundamental property of ZYX Euler angles, not a filter bug.
-         * Applications that must track through ±90° pitch should use the quaternion
-         * directly (available via SensorsRegistry::getOrientation().q). */
+         *
+         * The guard is engaged at |sinp| >= sin(80°) = 0.9848, not at 0.9999.
+         * Between 80° and 90° the near-zero atan2 denominators amplify quaternion
+         * noise into large spurious Roll/Yaw swings even though the singularity
+         * has not technically been reached. Widening the threshold eliminates
+         * those artifacts 10° earlier at the cost of Roll being held at 0° from
+         * 80° onward — which is preferable to a noisy, meaningless value.
+         *
+         * Roll and Yaw crossing ±90° have no singularity in ZYX convention.
+         * atan2 covers the full ±180° range; no special handling is required.
+         * Yaw wraps at ±180° (output discontinuity only, filter state unaffected).
+         *
+         * Applications that must track through ±90° pitch continuously should
+         * consume the quaternion directly (SensorsRegistry::getOrientation().q). */
         float q0 = m_q.w, q1 = m_q.x, q2 = m_q.y, q3 = m_q.z;
 
         float sinp = 2.0f*(q0*q2 - q3*q1);
@@ -295,7 +306,7 @@ namespace EdgeSense {
         pitch_deg = RAD_TO_DEG * asinf(sinp);
 
         float raw_yaw;
-        if (fabsf(sinp) >= 0.9999f) {
+        if (fabsf(sinp) >= 0.9848f) {   /* sin(80°): engage before denominator noise explodes */
             roll_deg = 0.0f;
             raw_yaw  = (sinp > 0.0f) ?  2.0f * RAD_TO_DEG * atan2f(q3, q0)
                                       : -2.0f * RAD_TO_DEG * atan2f(q3, q0);

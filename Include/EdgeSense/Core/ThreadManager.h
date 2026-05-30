@@ -18,10 +18,26 @@ namespace EdgeSense {
     enum class Tier { HARVESTER, REFINER, PROCESS };
     enum class ExecutionMode { APP, CALIB, IDLE };
 
-    /* Using slow sampling rates instead of the desired ones (1/5/10) => (5/10/10) */
+    /* 5/10/10 ms — Harvester at 200Hz. The I2C transaction (AccGyro + Mag + Baro) takes
+     * ~3.9 ms on this platform; HARVESTER_CYCLETIME_MS must remain > I2C latency to
+     * avoid overrun. At 5 ms the thread sleeps ~1.1 ms per cycle and jitter stays < 1 ms.
+     * Original target was 1/5/10 (requires kernel core-isolation/PREEMPT_RT).
+     * REFINER_WINDOW_SAMPLES = 10/5 = 2 fresh samples per 10 ms Refiner window. */
     #define HARVESTER_CYCLETIME_MS 5
-    #define REFINER_CYCLETIME_MS 10
-    #define PROCESS_CYCLETIME_MS 10
+    #define REFINER_CYCLETIME_MS   10
+    #define PROCESS_CYCLETIME_MS   10
+
+    /* Samples produced by the Harvester inside one Refiner period.
+     * getLatest() in appRefineAction() MUST reference this macro — never a literal —
+     * so the averaging window stays correct whenever cycle times change. */
+    #define REFINER_WINDOW_SAMPLES (REFINER_CYCLETIME_MS / HARVESTER_CYCLETIME_MS)
+
+    static_assert(REFINER_CYCLETIME_MS > HARVESTER_CYCLETIME_MS,
+                  "Refiner period must be strictly greater than Harvester period.");
+    static_assert(REFINER_CYCLETIME_MS % HARVESTER_CYCLETIME_MS == 0,
+                  "Refiner period must be an exact multiple of Harvester period; "
+                  "otherwise REFINER_WINDOW_SAMPLES is non-integer and getLatest() "
+                  "will include stale samples from the previous Refiner tick.");
 
     /* Debug Mode */
     #define DEBUG_MODE true
