@@ -88,6 +88,7 @@ namespace EdgeSense {
          * Earth-frame field: rotate [mx,my,mz] with the freshly computed q. */
         float q0 = m_q.w, q1 = m_q.x, q2 = m_q.y, q3 = m_q.z;
         float magNorm = sqrtf(mx*mx + my*my + mz*mz);
+        m_nominalMagNorm = magNorm;
         if (magNorm > 0.0f) {
             float rN = 1.0f / magNorm;
             float mnx = mx*rN, mny = my*rN, mnz = mz*rN;
@@ -175,6 +176,13 @@ namespace EdgeSense {
         gy *= -DEG_TO_RAD;
         gz *=  DEG_TO_RAD;
 
+        /* 3b. Angular-rate magnitude and fast-motion flag.
+         * Computed here (after unit conversion) so the threshold is in rad/s.
+         * gyroFast suppresses the accel/mag gradient and 9-DOF magnetic correction
+         * during rapid rotation to prevent cross-axis contamination. */
+        float gyroMag = sqrtf(gx*gx + gy*gy + gz*gz);
+        bool  gyroFast = (gyroMag > AHRS_HIGH_GYRO_RATE_THRESHOLD_RADS);
+
         /* 4. First-call initialisation: seed quaternion from accel + mag instead of
          * identity. This places the filter near the true orientation immediately. */
         if (m_firstCall) {
@@ -219,18 +227,24 @@ namespace EdgeSense {
          * point the direction-angle check would also pass (no contradiction). */
         float magMag    = sqrtf(mx*mx + my*my + mz*mz);
         bool  magNormOk = (magMag >= AHRS_MAG_NORM_MIN && magMag <= AHRS_MAG_NORM_MAX);
+        if (magNormOk && m_nominalMagNorm > 0.0f) {
+            float ratio = fabsf(magMag - m_nominalMagNorm) / m_nominalMagNorm;
+            magNormOk = (ratio < AHRS_MAG_NORM_RATIO_GATE);
+        }
         bool  magValid  = accelValid && gravityAligned && magNormOk;
 
-        /* 8. Set effective beta: full value when accel is trustworthy, zero otherwise.
-         * With ζ active, the gyro bias continues to be estimated even when beta = 0,
-         * so residual bias does not accumulate during dynamic phases. */
-        m_filter.setBeta(accelValid ? AHRS_MADGWICK_BETA : 0.0f);
+        /* 8. Set effective beta: full value only when accel is trustworthy and the
+         * board is not rotating fast. Zero beta during fast rotation prevents the
+         * magnetic Jacobian cross-terms from bleeding into Roll/Pitch.
+         * With ζ active, gyro bias is still estimated even when beta = 0. */
+        bool  betaActive = (accelValid && !gyroFast);
+        m_filter.setBeta(betaActive ? AHRS_MADGWICK_BETA : 0.0f);
 
         /* 9. Run filter.
          * Suppress 9-DOF for STARTUP_6DOF_CYCLES: the mag Jacobian s1 cross-term
          * adds to Roll when gz bias has drifted Yaw; 6-DOF lets ζ converge
          * gx/gy first so the coupling is negligible when 9-DOF is enabled. */
-        bool useNineDOF = magValid && (m_cycleCount >= STARTUP_6DOF_CYCLES);
+        bool useNineDOF = magValid && !gyroFast && (m_cycleCount >= STARTUP_6DOF_CYCLES);
         if (useNineDOF && (m_cycleCount == STARTUP_6DOF_CYCLES)) {
             LOG_INFO("[AHRS] Startup 6-DOF phase complete; engaging 9-DOF (Yaw correction active)");
         }
@@ -254,8 +268,8 @@ namespace EdgeSense {
         m_lastAccelMag     = accelMag;
         m_lastMagMag       = magMag;
         m_lastMagValid     = useNineDOF;
-        m_lastBeta         = accelValid ? AHRS_MADGWICK_BETA : 0.0f;
-        m_lastGyroMag      = sqrtf(gx*gx + gy*gy + gz*gz);
+        m_lastBeta         = betaActive ? AHRS_MADGWICK_BETA : 0.0f;
+        m_lastGyroMag      = gyroMag;
         m_lastGravityError = gravityError_deg;
 
         /* 11. Convert quaternion to Euler angles */
@@ -265,7 +279,7 @@ namespace EdgeSense {
         /* 12. Advance cycle counter and store in registry */
         m_cycleCount++;
         bool ready = (m_cycleCount >= WARMUP_CYCLES);
-        registry.updateOrientation(roll, pitch, yaw, ready);
+        registry.updateOrientation(roll, pitch, yaw, ready, m_q);
     }
 
     void AhrsEngine::quaternionToEuler(float& roll_deg,
@@ -279,25 +293,36 @@ namespace EdgeSense {
          * Pitch (Y): asin(clamp(2(q0q2 − q3q1), −1, 1))
          * Yaw   (Z): atan2(2(q0q3 + q1q2), 1 − 2(q2² + q3²)) + declination
          *
-         * At Pitch = ±90° the atan2 denominators both → 0 (gimbal lock).
-         * Roll and Yaw become co-planar: only their sum/difference is observable.
-         * Convention for the degenerate case: set Roll = 0, Yaw absorbs heading.
-         *   North pole (+90°): Yaw = +2·atan2(q3, q0)
-         *   South pole (−90°): Yaw = −2·atan2(q3, q0)
+         * ZYX has a genuine mathematical singularity at Pitch = ±90°: the
+         * denominators of both atan2 calls reach exactly zero because the Roll
+         * axis and the Yaw axis become co-planar (gimbal lock). Only the
+         * combination (Yaw − Roll) at +90° and (Yaw + Roll) at −90° is
+         * observable — not Roll and Yaw individually.
          *
-         * The guard is engaged at |sinp| >= sin(80°) = 0.9848, not at 0.9999.
-         * Between 80° and 90° the near-zero atan2 denominators amplify quaternion
-         * noise into large spurious Roll/Yaw swings even though the singularity
-         * has not technically been reached. Widening the threshold eliminates
-         * those artifacts 10° earlier at the cost of Roll being held at 0° from
-         * 80° onward — which is preferable to a noisy, meaningless value.
+         * Degenerate formula (derivation via quaternion product expansion):
+         *   At +90°: q.w = (√2/2)cos((ψ−φ)/2), q.z = (√2/2)sin((ψ−φ)/2)
+         *             → 2·atan2(q.z, q.w) = ψ−φ → Yaw = ψ (convention: φ=0)
+         *   At −90°: q.w = (√2/2)cos((ψ−φ)/2), q.z = (√2/2)sin((ψ−φ)/2)
+         *             → same formula, same result.
+         *   Both poles: Roll = 0,  Yaw = 2·atan2(q3, q0).
          *
-         * Roll and Yaw crossing ±90° have no singularity in ZYX convention.
+         * The guard is engaged at |sinp| >= sin(88°) = 0.9994, not at 1.0000,
+         * to avoid division-by-near-zero noise in the 88°–90° band. Between
+         * 0° and 87° the standard atan2 formulas are fully valid and track Roll
+         * and Yaw independently with no artificial clamping. Above 88° the
+         * conventional Roll=0 assignment is the mathematically correct choice:
+         * it does NOT suppress real motion — Roll and Yaw are genuinely
+         * indistinguishable at that orientation in ZYX representation.
+         *
+         * Roll and Yaw crossing ±180° have no singularity in ZYX convention.
          * atan2 covers the full ±180° range; no special handling is required.
          * Yaw wraps at ±180° (output discontinuity only, filter state unaffected).
          *
-         * Applications that must track through ±90° pitch continuously should
-         * consume the quaternion directly (SensorsRegistry::getOrientation().q). */
+         * For applications that must track Roll through ±90° pitch — where this
+         * representation constraint is unacceptable — use the quaternion stored
+         * in SensorsRegistry: getOrientationQuaternion(). The filter state is
+         * a valid unit quaternion at all orientations; the limitation is only
+         * in this Euler extraction step. */
         float q0 = m_q.w, q1 = m_q.x, q2 = m_q.y, q3 = m_q.z;
 
         float sinp = 2.0f*(q0*q2 - q3*q1);
@@ -306,10 +331,9 @@ namespace EdgeSense {
         pitch_deg = RAD_TO_DEG * asinf(sinp);
 
         float raw_yaw;
-        if (fabsf(sinp) >= 0.9848f) {   /* sin(80°): engage before denominator noise explodes */
+        if (fabsf(sinp) >= 0.9994f) {   /* sin(88°): 2° guard before true singularity */
             roll_deg = 0.0f;
-            raw_yaw  = (sinp > 0.0f) ?  2.0f * RAD_TO_DEG * atan2f(q3, q0)
-                                      : -2.0f * RAD_TO_DEG * atan2f(q3, q0);
+            raw_yaw  = 2.0f * RAD_TO_DEG * atan2f(q3, q0);
         } else {
             roll_deg = RAD_TO_DEG * atan2f(2.0f*(q0*q1 + q2*q3),
                                             1.0f - 2.0f*(q1*q1 + q2*q2));

@@ -51,6 +51,25 @@
  * both accel and mag corrections for this cycle. 0.981 m/s² ≈ 0.1 g. */
 #define AHRS_MOTION_THRESHOLD 0.981f
 
+/* Angular-rate gate for gradient suppression (rad/s).
+ * When |ω| exceeds this threshold the gyro integration is the dominant signal.
+ * Suppress both the accel/mag gradient (beta→0) and the 9-DOF magnetic
+ * correction to prevent the magnetic Jacobian cross-terms from bleeding into
+ * Roll during rapid pitch/roll rotation. The ζ bias integrator continues
+ * regardless (it runs from gyro-error residuals, not from accel/mag).
+ * 0.52 rad/s ≈ 30°/s — cleanly above sensor noise (~0.005 rad/s) and below
+ * any deliberate slow-motion tracking use case. */
+#define AHRS_HIGH_GYRO_RATE_THRESHOLD_RADS 0.52f
+
+/* Relative magnetometer norm gate.
+ * If the measured mag magnitude deviates from the value recorded at
+ * initialisation by more than this fraction, residual hard-iron calibration
+ * error is dominating the reading and the field direction is unreliable.
+ * Gate off 9-DOF to prevent a corrupted gradient from cross-contaminating Roll.
+ * 0.35 = allow ±35% variation (covers room-to-room field strength changes
+ * while catching the observed collapse from 0.44 → 0.09 Gauss during tilt). */
+#define AHRS_MAG_NORM_RATIO_GATE 0.35f
+
 /* Magnetometer norm sanity gate (Gauss — matches LSM9DS1 output units). */
 #define AHRS_MAG_NORM_MIN   0.1f
 #define AHRS_MAG_NORM_MAX   1.2f
@@ -148,6 +167,11 @@ namespace EdgeSense {
         float m_refBx      = 0.0f;
         float m_refBz      = 0.0f;
         bool  m_refInitialized = false;
+
+        /* Expected magnetometer magnitude recorded at initialisation (Gauss).
+         * Used by the relative norm gate to detect hard-iron calibration failures
+         * that collapse the apparent field magnitude during certain orientations. */
+        float m_nominalMagNorm = 0.0f;
 
         float m_lastAccelMag     = 1.0f;
         float m_lastMagMag       = 0.0f;
