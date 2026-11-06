@@ -133,8 +133,11 @@ namespace EdgeSense {
                             }
                         }
 
-                        /* Check if we have enough samples for this position */
-                        if (collectedSamples % SAMPLES_PER_POSITION == 0 && collectedSamples > 0) {
+                        /* Check if we have enough samples for this position.
+                         * Use absolute threshold to avoid triggering spuriously when state was
+                         * changed to ERROR or WAIT by the abort/retry path above (collectedSamples
+                         * sits exactly on a SAMPLES_PER_POSITION boundary at that point). */
+                        if (collectedSamples >= (currentPosition + 1) * SAMPLES_PER_POSITION) {
                             LOG_INFO("[ACCEL] Position " + std::to_string(currentPosition + 1) + " capture done.");
                             currentPosition++;
                             if (currentPosition < 6) {

@@ -12,7 +12,7 @@
 namespace EdgeSense {
     namespace Sensors {
         LPS25HB::LPS25HB(HAL::I2cMaster& bus)
-        : EnvSensors("LPS25HB_ENV_NAME", 0x5C, bus), temp(0.0f), pressure(0.0f) {}
+        : EnvSensors(LPS25HB_ENV_NAME, 0x5C, bus), temp(0.0f), pressure(0.0f) {}
 
         bool LPS25HB::initialize() {
             uint8_t id = 0;

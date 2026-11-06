@@ -8,6 +8,7 @@
 #pragma once
 #include <EdgeSense/Utils/CircularBuffer.h>
 #include <EdgeSense/Sensors/Sensors.h>
+#include <EdgeSense/Navigator/OrientationData.h>
 #include <atomic>
 #include <mutex>
 
@@ -46,6 +47,12 @@ namespace EdgeSense {
             void updateFilteredEnv(float press, float temp);
             void getFilteredEnv(float& press, float& temp);
 
+            /* --- Orientation Data (written by Navigator / AhrsEngine at PROCESS tier) --- */
+            void updateOrientation(float roll_deg, float pitch_deg, float yaw_deg,
+                                   bool valid, const Navigator::Quaternion& q);
+            void getOrientation(float& roll_deg, float& pitch_deg, float& yaw_deg, bool& valid);
+            void getOrientationQuaternion(Navigator::Quaternion& q);
+
         private:
             SensorsRegistry() = default; /* Private constructor for Singleton */
 
@@ -62,6 +69,13 @@ namespace EdgeSense {
             std::mutex dataMutex;
             float f_accex, f_accey, f_accez, f_gyrox, f_gyroy, f_gyroz, f_magx, f_magy, f_magz;
             float f_pressure, f_temp;
+
+            /* Orientation snapshots (plain floats — same pattern as IMU/env above) */
+            float f_roll_deg        = 0.0f;
+            float f_pitch_deg       = 0.0f;
+            float f_yaw_deg         = 0.0f;
+            bool  f_orientation_valid = false;
+            Navigator::Quaternion f_q;
         };
 
     } /* namespace Sensors */

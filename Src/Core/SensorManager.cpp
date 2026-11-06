@@ -5,10 +5,12 @@
  * @date 2026-04-06
  */
 #include <EdgeSense/Core/SensorManager.h>
+#include <EdgeSense/Navigator/AhrsEngine.h>
 #include <EdgeSense/Logger/Logger.h>
 #include <iomanip>
 #include <iostream>
-#include <sstream>
+#include <chrono>
+#include <unistd.h>
 
 using namespace EdgeSense::Core;
 using namespace EdgeSense::Sensors;
@@ -101,9 +103,10 @@ namespace EdgeSense {
     }
 
     void SensorManager::appRefineAction() {
-        /* * This runs at 200Hz. 
-         * It takes the raw data, applies the calibration offsets, 
-         * and saves the clean data back to the registry.
+        /* Runs at 100Hz (REFINER_CYCLETIME_MS = 10ms).
+         * Averages the last REFINER_WINDOW_SAMPLES Harvester samples (a complete
+         * 10ms window with no stale data), applies calibration, and writes
+         * clean snapshots to the registry for the AHRS to consume.
          */
         auto& registry = EdgeSense::Sensors::SensorsRegistry::getInstance();
         
@@ -118,10 +121,10 @@ namespace EdgeSense {
             return EdgeSense::Sensors::Vector3{avg.x/n, avg.y/n, avg.z/n};
         };
 
-        /* Process IMU data */
-        auto aAvg = getAverage(registry.getAccelRawBuffer().getLatest(5));
-        auto gAvg = getAverage(registry.getGyroRawBuffer().getLatest(5));
-        auto mAvg = getAverage(registry.getMagRawBuffer().getLatest(5));
+        /* Process IMU data — window exactly covers one Refiner period, no stale samples. */
+        auto aAvg = getAverage(registry.getAccelRawBuffer().getLatest(REFINER_WINDOW_SAMPLES));
+        auto gAvg = getAverage(registry.getGyroRawBuffer().getLatest(REFINER_WINDOW_SAMPLES));
+        auto mAvg = getAverage(registry.getMagRawBuffer().getLatest(REFINER_WINDOW_SAMPLES));
 
         /* Apply calibration offsets */
         CalibrationEngine::getInstance().applyCalibrationOffsets(aAvg, gAvg, mAvg);
@@ -139,35 +142,110 @@ namespace EdgeSense {
         }
     }
 
-    void SensorManager::appProcessAction() {
-        /* * This runs at 100Hz. 
-         * Handles logging, IPC broadcast, or AHRS math.
-         */
-        static int printDivisor = 0;
-        auto& registry = EdgeSense::Sensors::SensorsRegistry::getInstance();
-        
-        float ax, ay, az, gx, gy, gz, mx, my, mz, press, temp;
-        
-        /* Pull the clean snapshots */
-        registry.getFilteredImuAccel(ax, ay, az);
-        registry.getFilteredImuGyro(gx, gy, gz);
-        registry.getFilteredImuMag(mx, my, mz);
-        registry.getFilteredEnv(press, temp);
+    void SensorManager::toggleDisplayMode() {
+        m_rollingLog = !m_rollingLog;
+        m_firstPrint = true; /* suppress cursor-up on first print after the switch */
+    }
 
-        /* Log sensor data at 10Hz (every 100ms) to avoid CPU bloat */
-        if (++printDivisor >= 10) {
-            /* Dashboard: [IMU]=Motion [MAG]=Heading [ENV]=Atmosphere [JIT]=OS Health */
-            std::ostringstream oss;
-            oss << std::fixed << std::setprecision(2)
-                << "[IMU] Accel: (" << ax << ", " << ay << ", " << az << ")"
-                << " | Gyro: (" << gx << ", " << gy << ", " << gz << ")"
-                << " | [MAG] (" << mx << ", " << my << ", " << mz << ")"
-                << " | [ENV] " << press << "hPa " << temp << "C"
-                << " | [JIT] H:" << (tm.getMaxJitter(EdgeSense::Core::Tier::HARVESTER) / 1000)
-                << "us R:" << (tm.getMaxJitter(EdgeSense::Core::Tier::REFINER) / 1000)
-                << "us P:" << (tm.getMaxJitter(EdgeSense::Core::Tier::PROCESS) / 1000) << "us";
-            LOG_INFO(oss.str());
-            printDivisor = 0;
+    void SensorManager::appProcessAction() {
+
+        /* Drive the AHRS filter at full 100Hz — writes fresh roll/pitch/yaw to SensorsRegistry */
+        EdgeSense::Navigator::AhrsEngine::getInstance().update();
+
+        /* Debug display throttled to 20Hz (every 5th call at 100Hz PROCESS rate).
+         * The registry always holds the latest orientation regardless of display rate. */
+        m_displayTick++;
+        if (m_displayTick % 5 == 0) {
+
+            /* Read calibrated sensor snapshots */
+            auto& registry = EdgeSense::Sensors::SensorsRegistry::getInstance();
+            float ax, ay, az, gx, gy, gz, mx, my, mz;
+            registry.getFilteredImuAccel(ax, ay, az);
+            registry.getFilteredImuGyro(gx, gy, gz);
+            registry.getFilteredImuMag(mx, my, mz);
+
+            /* Read orientation */
+            float roll, pitch, yaw;
+            bool  valid;
+            registry.getOrientation(roll, pitch, yaw, valid);
+
+            /* Read AHRS diagnostics */
+            float diagAccelMag, diagMagMag, diagBeta, diagGyroMag, diagGravityError;
+            bool  diagMagValid;
+            EdgeSense::Navigator::AhrsEngine::getInstance()
+                .getDiagnostics(diagAccelMag, diagMagMag, diagMagValid, diagBeta,
+                                diagGyroMag, diagGravityError);
+
+            /* Detect once whether stdout is an interactive terminal.
+             * When redirected to a file or pipe, ANSI escape codes are noise — use a
+             * structured key=value line instead so the log is directly grep/awk-parseable. */
+            static const bool s_isTty = (isatty(STDOUT_FILENO) == 1);
+            static const auto s_start = std::chrono::steady_clock::now();
+
+            if (s_isTty) {
+                /* Interactive terminal: 2-line ANSI in-place refresh or rolling log */
+                if (!m_rollingLog && !m_firstPrint) {
+                    std::cout << "\033[2A";
+                }
+                m_firstPrint = false;
+
+                std::cout << std::fixed << std::setprecision(2)
+                          << "\r\033[K[IMU]"
+                          << " A:(" << std::setw(5) << ax << "," << std::setw(5) << ay << "," << std::setw(5) << az << ")"
+                          << " G:(" << std::setw(6) << gx << "," << std::setw(6) << gy << "," << std::setw(6) << gz << ")"
+                          << " M:(" << std::setw(7) << mx << "," << std::setw(7) << my << "," << std::setw(7) << mz << ")\n";
+
+                std::cout << std::setprecision(1)
+                          << "\r\033[K[AHRS] Roll: " << std::setw(7) << roll
+                          << "  Pitch: "             << std::setw(7) << pitch
+                          << "  Yaw: "               << std::setw(7) << yaw
+                          << std::setprecision(2)
+                          << "  |a|:" << (diagAccelMag / 9.80665f) << "g"
+                          << "  |m|:" << diagMagMag << "G"
+                          << (diagMagValid ? " 9DOF" : " 6DOF")
+                          << "  ge:" << std::setprecision(1) << diagGravityError << "°"
+                          << "  w:" << std::setprecision(3) << diagGyroMag << "r/s"
+                          << "  b:" << std::setprecision(2) << diagBeta
+                          << "  | [JIT] H:" << (tm.getMaxJitter(EdgeSense::Core::Tier::HARVESTER) / 1000)
+                          << "us R:"        << (tm.getMaxJitter(EdgeSense::Core::Tier::REFINER)   / 1000)
+                          << "us P:"        << (tm.getMaxJitter(EdgeSense::Core::Tier::PROCESS)   / 1000) << "us"
+                          << (valid ? "" : "  [WARMUP]")
+                          << "\n" << std::flush;
+
+            } else {
+                /* Non-TTY (file redirect / pipe): single structured line, no ANSI codes.
+                 * Format: [DATA] key=value ... — one cycle per line, all fields present.
+                 * Grep with: grep '\[DATA\]' log.log
+                 * Extract fields: awk '{for(i=2;i<=NF;i++){split($i,a,"=");d[a[1]]=a[2]};print d["t"],d["R"],d["P"]}' */
+                auto tMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+                                std::chrono::steady_clock::now() - s_start).count();
+
+                std::cout << std::fixed
+                          << "[DATA]"
+                          << " t="   << tMs
+                          << std::setprecision(4)
+                          << " ax="  << ax  << " ay=" << ay  << " az=" << az
+                          << " gx="  << gx  << " gy=" << gy  << " gz=" << gz
+                          << " mx="  << mx  << " my=" << my  << " mz=" << mz
+                          << std::setprecision(2)
+                          << " R="   << roll
+                          << " P="   << pitch
+                          << " Y="   << yaw
+                          << std::setprecision(4)
+                          << " a="   << (diagAccelMag / 9.80665f)
+                          << " m="   << diagMagMag
+                          << " dof=" << (diagMagValid ? 9 : 6)
+                          << std::setprecision(2)
+                          << " ge="  << diagGravityError
+                          << std::setprecision(4)
+                          << " w="   << diagGyroMag
+                          << " b="   << diagBeta
+                          << " jH="  << (tm.getMaxJitter(EdgeSense::Core::Tier::HARVESTER) / 1000)
+                          << " jR="  << (tm.getMaxJitter(EdgeSense::Core::Tier::REFINER)   / 1000)
+                          << " jP="  << (tm.getMaxJitter(EdgeSense::Core::Tier::PROCESS)   / 1000)
+                          << " ok="  << (valid ? 1 : 0)
+                          << "\n" << std::flush;
+            }
         }
     }
 
