@@ -53,3 +53,8 @@ obj/
 .DS_Store
 *.swp
 log.log
+
+
+# Device-specific calibration output pulled from the Pi
+CalibData/**/*.bin
+CalibData/**/*.json
